@@ -8,6 +8,6 @@ public class PiDataGraph {
     public static final String MOD_ID = "pidatagraph";
 
     public static ResourceLocation id(String path) {
-        return new ResourceLocation(MOD_ID, path);
+        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
     }
 }

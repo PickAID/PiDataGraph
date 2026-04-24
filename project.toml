@@ -1,0 +1,62 @@
+schema_version = 1
+template_version = "1.20.1-template-1.0.0"
+
+[mod]
+mod_id = "pidatagraph"
+mod_name = "PiDataGraph"
+version = "0.0.1"
+version_suffix = ""
+group = "com.mihono.pickaid"
+authors = ["PickAID Team"]
+license = "MIT"
+description = "Data-driven graph runtime for gameplay logic from datapacks."
+credits = "None"
+issue_tracker_url = "https://github.com/PickAID/PiDataGraph/issues"
+
+[features]
+# Built-in ecosystem switches handled directly by the template build.
+jei = false
+curios = false
+geckolib = false
+player_animator = false
+mixin_extras = false
+
+[dev_packs]
+# Local-only helper packs for development runs.
+# They are for easier local testing and do not define your published API surface.
+basic = false
+appleskin = false
+combat = false
+curios = false
+spell = false
+kubejs = false
+
+[overrides]
+# Optional version overrides for enabled features only.
+
+[repositories]
+# Extra Maven repositories used by entries below.
+architectury = "https://maven.architectury.dev"
+latvian = "https://maven.latvian.dev/releases"
+
+# Additional dependencies are grouped by Gradle-style bucket name.
+[dependencies.deobf_compile_only]
+# Local script-facing compile helpers.
+kubejs = "dev.latvian.mods:kubejs-forge:2001.6.4-build.120"
+rhino = "dev.latvian.mods:rhino-forge:2001.2.2-build.18"
+
+[dependencies.deobf_implementation]
+# Runtime dependency needed by PiDataGraph's current Forge integration layer.
+architectury = { notation = "dev.architectury:architectury-forge:9.1.12", transitive = false }
+
+[publish]
+# Leave tokens out of git. Prefer environment variables for real releases.
+maven_url = "https://maven.mihono.cn/repository/pickaid1201/"
+curseforge_project = 0
+modrinth_project = ""
+release_type = "alpha"
+
+[naming]
+# Published jar naming.
+archive_name = "pidatagraph"
+jar_format = "{archive_name}-{mc_version}-{version}"
