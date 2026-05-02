@@ -5,11 +5,11 @@ template_version = "1.20.1-template-1.0.0"
 mod_id = "pidatagraph"
 mod_name = "PiDataGraph"
 version = "0.0.1"
-version_suffix = ""
+version_suffix = "dev"
 group = "com.mihono.pickaid"
 authors = ["PickAID Team"]
 license = "MIT"
-description = "Data-driven graph runtime for gameplay logic from datapacks."
+description = "Data-flow graph runtime for gameplay logic."
 credits = "None"
 issue_tracker_url = "https://github.com/PickAID/PiDataGraph/issues"
 
@@ -35,19 +35,8 @@ kubejs = false
 # Optional version overrides for enabled features only.
 
 [repositories]
-# Extra Maven repositories used by entries below.
-architectury = "https://maven.architectury.dev"
-latvian = "https://maven.latvian.dev/releases"
 
-# Additional dependencies are grouped by Gradle-style bucket name.
-[dependencies.deobf_compile_only]
-# Local script-facing compile helpers.
-kubejs = "dev.latvian.mods:kubejs-forge:2001.6.4-build.120"
-rhino = "dev.latvian.mods:rhino-forge:2001.2.2-build.18"
-
-[dependencies.deobf_implementation]
-# Runtime dependency needed by PiDataGraph's current Forge integration layer.
-architectury = { notation = "dev.architectury:architectury-forge:9.1.12", transitive = false }
+[dependencies]
 
 [publish]
 # Leave tokens out of git. Prefer environment variables for real releases.

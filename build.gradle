@@ -23,6 +23,7 @@ plugins {
 }
 
 apply plugin: 'idea'
+apply plugin: 'java-library'
 apply plugin: 'maven-publish'
 apply plugin: "com.matthewprenger.cursegradle"
 apply plugin: 'org.spongepowered.mixin'
@@ -261,6 +262,10 @@ def createConfiguredDependency = { String notation, boolean transitive ->
 
 dependencies {
     minecraft "net.minecraftforge:forge:${config.mc_version}-${config.forge_version}"
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
     if (enabledFeatures.mixin_extras) {
         compileOnly(annotationProcessor("com.github.llamalad7.mixinextras:mixinextras-common:${config.mixin_extras_version}"))
     }
@@ -411,6 +416,10 @@ dependencies {
             }
         }
     } else libDir.mkdir();
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }
 
 if (!enabledDevPacks.isEmpty()) {
