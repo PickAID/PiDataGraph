@@ -61,6 +61,6 @@ class PiGraphRuntimeTest {
     }
 
     private static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath("test", path);
+        return new ResourceLocation("test", path);
     }
 }
