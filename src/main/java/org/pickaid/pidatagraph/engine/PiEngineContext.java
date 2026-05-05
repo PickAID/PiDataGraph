@@ -20,6 +20,7 @@ import org.pickaid.pidatagraph.engine.action.PiEngineAction;
 import org.pickaid.pidatagraph.engine.action.PiEngineActionType;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineKeyNames;
 import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
 
 public final class PiEngineContext {
@@ -57,9 +58,10 @@ public final class PiEngineContext {
     }
 
     public double number(String key) {
-        Double value = numbers.get(Objects.requireNonNull(key, "key"));
+        String checkedKey = checkNumberKey(key);
+        Double value = numbers.get(checkedKey);
         if (value == null) {
-            throw new IllegalArgumentException("missing engine context number: " + key);
+            throw new IllegalArgumentException("missing engine context number: " + checkedKey);
         }
         return value;
     }
@@ -69,7 +71,7 @@ public final class PiEngineContext {
     }
 
     public boolean hasNumber(String key) {
-        return numbers.containsKey(Objects.requireNonNull(key, "key"));
+        return numbers.containsKey(checkNumberKey(key));
     }
 
     public boolean hasNumber(PiEngineNumberKey key) {
@@ -145,20 +147,21 @@ public final class PiEngineContext {
     }
 
     public Optional<Object> object(String key) {
-        return Optional.ofNullable(objects.get(Objects.requireNonNull(key, "key")));
+        return Optional.ofNullable(objects.get(checkObjectKey(key)));
     }
 
     public boolean hasObject(String key) {
-        return objects.containsKey(Objects.requireNonNull(key, "key"));
+        return objects.containsKey(checkObjectKey(key));
     }
 
     public <T> Optional<T> object(String key, Class<T> type) {
-        Object value = objects.get(Objects.requireNonNull(key, "key"));
+        String checkedKey = checkObjectKey(key);
+        Object value = objects.get(checkedKey);
         if (value == null) {
             return Optional.empty();
         }
         if (!type.isInstance(value)) {
-            throw new ClassCastException("engine context object `" + key + "` is " + value.getClass().getName() + ", not " + type.getName());
+            throw new ClassCastException("engine context object `" + checkedKey + "` is " + value.getClass().getName() + ", not " + type.getName());
         }
         return Optional.of(type.cast(value));
     }
@@ -240,9 +243,15 @@ public final class PiEngineContext {
         }
 
         private static String checkKey(String key) {
-            String checked = Objects.requireNonNull(key, "key").trim();
-            PiExpressionScope.of(checked);
-            return checked;
+            return checkNumberKey(key);
         }
+    }
+
+    private static String checkNumberKey(String key) {
+        return PiEngineKeyNames.variable(key);
+    }
+
+    private static String checkObjectKey(String key) {
+        return PiEngineKeyNames.object(key);
     }
 }

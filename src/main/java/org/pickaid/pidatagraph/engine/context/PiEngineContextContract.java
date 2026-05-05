@@ -10,7 +10,6 @@ import java.util.Optional;
 import java.util.Set;
 import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.data.PiDataVerificationException;
-import org.pickaid.pidatagraph.expression.PiExpressionScope;
 
 public final class PiEngineContextContract {
     private static final PiEngineContextContract EMPTY = new PiEngineContextContract(Set.of(), Map.of());
@@ -155,9 +154,7 @@ public final class PiEngineContextContract {
     }
 
     private static String checkName(String name) {
-        String checked = Objects.requireNonNull(name, "name").trim();
-        PiExpressionScope.of(checked);
-        return checked;
+        return PiEngineKeyNames.variable(name);
     }
 
     public static final class Builder {

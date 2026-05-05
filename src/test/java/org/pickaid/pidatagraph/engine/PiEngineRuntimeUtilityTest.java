@@ -19,7 +19,9 @@ import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.data.PiDataDefinition;
 import org.pickaid.pidatagraph.data.PiDataSet;
 import org.pickaid.pidatagraph.data.PiDataValidation;
+import org.pickaid.pidatagraph.engine.action.PiEmitFlagAction;
 import org.pickaid.pidatagraph.engine.action.PiEmitNumberAction;
+import org.pickaid.pidatagraph.engine.action.PiEmitObjectAction;
 import org.pickaid.pidatagraph.engine.action.PiEngineAction;
 import org.pickaid.pidatagraph.engine.action.PiEngineActionData;
 import org.pickaid.pidatagraph.engine.action.PiEngineActionRegistry;
@@ -29,9 +31,11 @@ import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineFlagKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
+import org.pickaid.pidatagraph.engine.context.PiEngineValueKey;
 import org.pickaid.pidatagraph.engine.predicate.PiEnginePredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiEnginePredicateType;
 import org.pickaid.pidatagraph.engine.predicate.PiEnginePredicates;
+import org.pickaid.pidatagraph.engine.predicate.PiHasNumberPredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiItemStackPredicate;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 import org.pickaid.pidatagraph.expression.PiExpressionScope;
@@ -43,6 +47,9 @@ class PiEngineRuntimeUtilityTest {
     private static final PiEngineNumberKey COOLDOWN = PiEngineNumberKey.of("cooldown");
     private static final PiEngineFlagKey ACCEPTED = PiEngineFlagKey.of("accepted");
     private static final PiEngineContextKey<Vec3> IMPACT = PiEngineContextKey.of("impact", Vec3.class);
+    private static final PiEngineValueKey<Number> HUD_MANA_FILL = PiEngineValueKey.number("hud.mana_fill");
+    private static final PiEngineValueKey<Boolean> HUD_READY = PiEngineValueKey.flag("hud.ready");
+    private static final PiEngineValueKey<Vec3> HIT_IMPACT = PiEngineValueKey.object("hit.impact", Vec3.class);
 
     @Test
     void frameMergeReportsConflictingOutputKeysAndSupportsExplicitReplacement() {
@@ -106,6 +113,25 @@ class PiEngineRuntimeUtilityTest {
     }
 
     @Test
+    void valueKeysSupportDottedFrameOutputsWithoutRawStrings() {
+        Vec3 impact = new Vec3(1, 2, 3);
+        PiEngineFlagKey dottedFlag = PiEngineFlagKey.of("hud.cast_ready");
+
+        PiEngineFrame frame = PiEngineFrame.builder()
+                .number(HUD_MANA_FILL, 0.75D)
+                .flag(HUD_READY, true)
+                .flag(dottedFlag, false)
+                .object(HIT_IMPACT, impact)
+                .build();
+
+        assertTrue(frame.hasValue(HUD_MANA_FILL));
+        assertEquals(0.75D, frame.number(HUD_MANA_FILL), 0.0001D);
+        assertTrue(frame.flag(HUD_READY));
+        assertFalse(frame.flag(dottedFlag));
+        assertSame(impact, frame.object(HIT_IMPACT).orElseThrow());
+    }
+
+    @Test
     void frameKeysSupportDefaultValuesForOptionalOutputs() {
         Vec3 fallbackImpact = new Vec3(0, 0, 0);
         PiEngineFrame frame = PiEngineFrame.builder()
@@ -114,10 +140,24 @@ class PiEngineRuntimeUtilityTest {
                 .build();
 
         assertEquals(9.0D, frame.numberOr(DAMAGE, 0), 0.0001D);
+        assertEquals(0.25D, frame.numberOr(HUD_MANA_FILL, 0.25D), 0.0001D);
         assertEquals(20, frame.integer(COOLDOWN));
         assertEquals(20, frame.integerOr(COOLDOWN, 0));
         assertFalse(frame.flagOr(ACCEPTED, false));
+        assertFalse(frame.flagOr(HUD_READY, false));
         assertSame(fallbackImpact, frame.objectOr(IMPACT, fallbackImpact));
+        assertSame(fallbackImpact, frame.objectOr(HIT_IMPACT, fallbackImpact));
+    }
+
+    @Test
+    void contextNumbersRemainExpressionVariablesWhileFrameValueKeysMayBeDotted() {
+        IllegalArgumentException variableError = assertThrows(IllegalArgumentException.class, () ->
+                PiEngineNumberKey.of("hud.mana_fill"));
+        assertEquals("invalid expression variable: hud.mana_fill", variableError.getMessage());
+
+        IllegalArgumentException frameError = assertThrows(IllegalArgumentException.class, () ->
+                PiEngineValueKey.number("hud.bad-key"));
+        assertEquals("invalid expression variable: bad-key", frameError.getMessage());
     }
 
     @Test
@@ -151,6 +191,49 @@ class PiEngineRuntimeUtilityTest {
         assertEquals(7.0D, context.number("hitBlockX"), 0.0001D);
         assertEquals(8.0D, context.number("hitBlockY"), 0.0001D);
         assertEquals(9.0D, context.number("hitBlockZ"), 0.0001D);
+    }
+
+    @Test
+    void contextStringReadsUseTheSameNameRulesAsContextBuilders() {
+        Vec3 actor = new Vec3(1, 0, 0);
+
+        PiEngineContext context = PiEngineContext.builder()
+                .number(" baseDamage ", 5)
+                .object(" actor ", actor)
+                .build();
+
+        assertTrue(context.hasNumber(" baseDamage "));
+        assertEquals(5.0D, context.number(" baseDamage "), 0.0001D);
+        assertTrue(context.hasObject(" actor "));
+        assertSame(actor, context.object(" actor ", Vec3.class).orElseThrow());
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                context.hasNumber("bad-key"));
+        assertEquals("invalid expression variable: bad-key", error.getMessage());
+    }
+
+    @Test
+    void emitActionsCanWriteDottedFrameOutputPaths() {
+        Vec3 impact = new Vec3(1, 2, 3);
+        PiEngineContext context = PiEngineContext.builder()
+                .number(BASE_DAMAGE, 6)
+                .object(IMPACT, impact)
+                .build();
+
+        assertEquals(12.0D, context.execute(new PiEmitNumberAction(
+                "hud.mana_fill",
+                PiDoubleExpression.of("baseDamage * 2")
+        )).number(HUD_MANA_FILL), 0.0001D);
+
+        assertTrue(context.execute(new PiEmitFlagAction(
+                "hud.ready",
+                new PiHasNumberPredicate("baseDamage")
+        )).flag(HUD_READY));
+
+        assertSame(impact, context.execute(new PiEmitObjectAction(
+                "hit.impact",
+                "impact"
+        )).object(HIT_IMPACT).orElseThrow());
     }
 
     @Test

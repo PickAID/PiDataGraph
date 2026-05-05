@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineKeyNames;
 import org.pickaid.pidatagraph.expression.PiExpressionLanguage;
 import org.pickaid.pidatagraph.expression.PiExpressionScope;
 
@@ -75,9 +76,7 @@ public final class PiEngineBuildContext {
     }
 
     private static String checkName(String name) {
-        String checked = Objects.requireNonNull(name, "name").trim();
-        PiExpressionScope.of(checked);
-        return checked;
+        return PiEngineKeyNames.object(name);
     }
 
     private static Class<?> mergeObjectType(String name, Class<?> existing, Class<?> next) {

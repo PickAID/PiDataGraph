@@ -15,7 +15,7 @@ public final class PiEmitFlagAction implements PiEngineAction {
     private final PiEnginePredicate predicate;
 
     public PiEmitFlagAction(String name, PiEnginePredicate predicate) {
-        this.name = PiEngineActions.checkVariableName(Objects.requireNonNull(name, "name"));
+        this.name = PiEngineActions.checkFrameValueName(Objects.requireNonNull(name, "name"));
         this.predicate = Objects.requireNonNull(predicate, "predicate");
     }
 

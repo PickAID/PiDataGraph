@@ -13,7 +13,7 @@ public final class PiEmitNumberAction implements PiEngineAction {
     private final PiDoubleExpression value;
 
     public PiEmitNumberAction(String name, PiDoubleExpression value) {
-        this.name = PiEngineActions.checkVariableName(Objects.requireNonNull(name, "name"));
+        this.name = PiEngineActions.checkFrameValueName(Objects.requireNonNull(name, "name"));
         this.value = Objects.requireNonNull(value, "value");
     }
 

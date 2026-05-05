@@ -1,13 +1,15 @@
 package org.pickaid.pidatagraph.engine;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineFlagKey;
+import org.pickaid.pidatagraph.engine.context.PiEngineKeyNames;
 import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
-import org.pickaid.pidatagraph.expression.PiExpressionScope;
+import org.pickaid.pidatagraph.engine.context.PiEngineValueKey;
 
 public final class PiEngineFrame {
     private static final PiEngineFrame EMPTY = new PiEngineFrame(Map.of());
@@ -15,7 +17,7 @@ public final class PiEngineFrame {
     private final Map<String, Object> values;
 
     private PiEngineFrame(Map<String, Object> values) {
-        this.values = Map.copyOf(values);
+        this.values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
     }
 
     public static PiEngineFrame empty() {
@@ -34,11 +36,19 @@ public final class PiEngineFrame {
         return number(Objects.requireNonNull(key, "key").name());
     }
 
+    public double number(PiEngineValueKey<? extends Number> key) {
+        return number(Objects.requireNonNull(key, "key").name());
+    }
+
     public double numberOr(String key, double fallback) {
         return hasValue(key) ? number(key) : fallback;
     }
 
     public double numberOr(PiEngineNumberKey key, double fallback) {
+        return numberOr(Objects.requireNonNull(key, "key").name(), fallback);
+    }
+
+    public double numberOr(PiEngineValueKey<? extends Number> key, double fallback) {
         return numberOr(Objects.requireNonNull(key, "key").name(), fallback);
     }
 
@@ -58,11 +68,19 @@ public final class PiEngineFrame {
         return hasValue(Objects.requireNonNull(key, "key").name());
     }
 
+    public boolean hasValue(PiEngineValueKey<?> key) {
+        return hasValue(Objects.requireNonNull(key, "key").name());
+    }
+
     public int integer(String key) {
         return value(key, Number.class).intValue();
     }
 
     public int integer(PiEngineNumberKey key) {
+        return integer(Objects.requireNonNull(key, "key").name());
+    }
+
+    public int integer(PiEngineValueKey<? extends Number> key) {
         return integer(Objects.requireNonNull(key, "key").name());
     }
 
@@ -74,6 +92,10 @@ public final class PiEngineFrame {
         return integerOr(Objects.requireNonNull(key, "key").name(), fallback);
     }
 
+    public int integerOr(PiEngineValueKey<? extends Number> key, int fallback) {
+        return integerOr(Objects.requireNonNull(key, "key").name(), fallback);
+    }
+
     public boolean flag(String key) {
         return value(key, Boolean.class);
     }
@@ -82,11 +104,19 @@ public final class PiEngineFrame {
         return flag(Objects.requireNonNull(key, "key").name());
     }
 
+    public boolean flag(PiEngineValueKey<Boolean> key) {
+        return flag(Objects.requireNonNull(key, "key").name());
+    }
+
     public boolean flagOr(String key, boolean fallback) {
         return hasValue(key) ? flag(key) : fallback;
     }
 
     public boolean flagOr(PiEngineFlagKey key, boolean fallback) {
+        return flagOr(Objects.requireNonNull(key, "key").name(), fallback);
+    }
+
+    public boolean flagOr(PiEngineValueKey<Boolean> key, boolean fallback) {
         return flagOr(Objects.requireNonNull(key, "key").name(), fallback);
     }
 
@@ -107,7 +137,17 @@ public final class PiEngineFrame {
         return object(key.name(), key.type());
     }
 
+    public <T> Optional<T> object(PiEngineValueKey<T> key) {
+        Objects.requireNonNull(key, "key");
+        return object(key.name(), key.type());
+    }
+
     public <T> T objectOr(PiEngineContextKey<T> key, T fallback) {
+        Objects.requireNonNull(fallback, "fallback");
+        return object(key).orElse(fallback);
+    }
+
+    public <T> T objectOr(PiEngineValueKey<T> key, T fallback) {
         Objects.requireNonNull(fallback, "fallback");
         return object(key).orElse(fallback);
     }
@@ -175,11 +215,19 @@ public final class PiEngineFrame {
             return number(Objects.requireNonNull(key, "key").name(), value);
         }
 
+        public Builder number(PiEngineValueKey<? extends Number> key, double value) {
+            return number(Objects.requireNonNull(key, "key").name(), value);
+        }
+
         public Builder integer(String key, int value) {
             return value(key, value);
         }
 
         public Builder integer(PiEngineNumberKey key, int value) {
+            return integer(Objects.requireNonNull(key, "key").name(), value);
+        }
+
+        public Builder integer(PiEngineValueKey<? extends Number> key, int value) {
             return integer(Objects.requireNonNull(key, "key").name(), value);
         }
 
@@ -191,11 +239,24 @@ public final class PiEngineFrame {
             return flag(Objects.requireNonNull(key, "key").name(), value);
         }
 
+        public Builder flag(PiEngineValueKey<Boolean> key, boolean value) {
+            return flag(Objects.requireNonNull(key, "key").name(), value);
+        }
+
         public Builder object(String key, Object value) {
             return value(key, value);
         }
 
         public <T> Builder object(PiEngineContextKey<T> key, T value) {
+            Objects.requireNonNull(key, "key");
+            Objects.requireNonNull(value, "value");
+            if (!key.type().isInstance(value)) {
+                throw new ClassCastException("engine frame value `" + key.name() + "` is " + value.getClass().getName() + ", not " + key.type().getName());
+            }
+            return object(key.name(), value);
+        }
+
+        public <T> Builder object(PiEngineValueKey<T> key, T value) {
             Objects.requireNonNull(key, "key");
             Objects.requireNonNull(value, "value");
             if (!key.type().isInstance(value)) {
@@ -223,11 +284,6 @@ public final class PiEngineFrame {
     }
 
     private static String checkKey(String key) {
-        String checked = Objects.requireNonNull(key, "key").trim();
-        String[] segments = checked.split("\\.", -1);
-        for (String segment : segments) {
-            PiExpressionScope.of(segment);
-        }
-        return checked;
+        return PiEngineKeyNames.frameValue(key);
     }
 }

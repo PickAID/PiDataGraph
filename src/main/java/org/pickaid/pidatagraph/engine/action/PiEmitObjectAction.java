@@ -12,7 +12,7 @@ public final class PiEmitObjectAction implements PiEngineAction {
     private final String source;
 
     public PiEmitObjectAction(String name, String source) {
-        this.name = PiEngineActions.checkVariableName(Objects.requireNonNull(name, "name"));
+        this.name = PiEngineActions.checkFrameValueName(Objects.requireNonNull(name, "name"));
         this.source = PiEngineActions.checkVariableName(Objects.requireNonNull(source, "source"));
     }
 

@@ -5,7 +5,7 @@
 - number：表达式、`number_range`、公式会读取它。
 - object：Java 叶子 action 和对象类 predicate 会读取它。
 
-Java 侧建议把稳定 key 收成常量。number 用 `PiEngineNumberKey`，object 用 `PiEngineContextKey<T>`，frame 里的 boolean 结果用 `PiEngineFlagKey`。`PiEngineFrame` 也能复用这些 key 读取输出：
+Java 侧建议把稳定 key 收成常量。执行输入的 number 用 `PiEngineNumberKey`，object 用 `PiEngineContextKey<T>`。frame 输出如果只是简单变量名，也可以继续复用 `PiEngineNumberKey` / `PiEngineFlagKey`；如果输出名带 `hud.mana_fill` 这种分组路径，用 `PiEngineValueKey`。
 
 ```java
 public static final PiEngineNumberKey BASE_DAMAGE = PiEngineNumberKey.of("baseDamage");
@@ -34,11 +34,27 @@ PiEngineFlagKey ACCEPTED = PiEngineFlagKey.of("accepted");
 PiEngineNumberKey DAMAGE = PiEngineNumberKey.of("damage");
 PiEngineNumberKey COOLDOWN = PiEngineNumberKey.of("cooldown");
 PiEngineContextKey<Vec3> IMPACT = PiEngineContextKey.of("impact", Vec3.class);
+PiEngineValueKey<Number> HUD_MANA_FILL = PiEngineValueKey.number("hud.mana_fill");
+PiEngineValueKey<Boolean> HUD_READY = PiEngineValueKey.flag("hud.ready");
 
 boolean accepted = frame.flagOr(ACCEPTED, false);
 double damage = frame.numberOr(DAMAGE, 0.0D);
 int cooldown = frame.integerOr(COOLDOWN, 0);
 Vec3 impact = frame.object(IMPACT).orElse(Vec3.ZERO);
+double manaFill = frame.numberOr(HUD_MANA_FILL, 0.0D);
+boolean ready = frame.flagOr(HUD_READY, false);
+```
+
+这个区分很重要：context number 会进入表达式变量表，所以只能是 `baseDamage` 这种变量名；frame 输出只是结果路径，可以用 dotted path 做分组。
+
+`emit_number`、`emit_flag`、`emit_object` 的 `name` 写入 frame 输出，所以也可以用 dotted path：
+
+```json
+{
+  "type": "pidatagraph:emit_number",
+  "name": "hud.mana_fill",
+  "value": "resource / maxResource"
+}
 ```
 
 ## key 从哪里来

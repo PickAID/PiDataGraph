@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.data.PiDataVerificationException;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineKeyNames;
 import org.pickaid.pidatagraph.expression.PiBooleanExpression;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 import org.pickaid.pidatagraph.expression.PiIntExpression;
@@ -112,9 +113,11 @@ public final class PiEngineActions {
     }
 
     public static String checkVariableName(String variable) {
-        String checked = Objects.requireNonNull(variable, "variable").trim();
-        org.pickaid.pidatagraph.expression.PiExpressionScope.of(checked);
-        return checked;
+        return PiEngineKeyNames.variable(variable);
+    }
+
+    public static String checkFrameValueName(String name) {
+        return PiEngineKeyNames.frameValue(name);
     }
 
     private static ResourceLocation id(String path) {
