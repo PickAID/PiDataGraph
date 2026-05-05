@@ -1,32 +1,29 @@
-# PiDataGraph 1.20.1 Wiki
+# PiDataGraph 1.20.1
 
-PiDataGraph 的 1.20.1 文档按使用场景拆开：
+PiDataGraph 现在提供一套小型但完整的数据驱动运行层：用 Codec 读取 JSON，用表达式描述数值，用 action/predicate 描述流程，用 `PiEngineContext` 接入真实游戏代码。
 
-- [执行上下文](context.md)：`PiEngineContext`、常用 key、Minecraft 对象绑定。
-- [公式和数据](data.md)：表达式、datapack JSON、datagen、加载校验。
-- [动作链](actions.md)：内置 action、predicate、自定义 Java 叶子 action。
-- [同步](sync.md)：如何通过 PiSerializeKit 和 PiNet 同步图状态。
-- [下游接入增强方案](authoring-dx-plan.md)：显式 runner/binder 和注解生成方案。
+## 入口
 
-## 最短路径
+- [数据和表达式](data.md)
+- [执行上下文](context.md)
+- [动作和条件](actions.md)
+- [数据包注册表和 Runner](registry-runner.md)
+- [基础图执行](core-graph.md)
+- [同步桥接](sync.md)
 
-1. 定义 JSON 数据结构，字段里使用 `PiDoubleExpression` / `PiBooleanExpression`。
-2. 用 `PiDataDefinition` 声明 codec 和校验。
-3. 用 `PiEngineContentType` 或 `PiEngineActionData` 在加载阶段编译或校验。
-4. 执行时用 `PiEngineContext.builder()` 放入本次运行需要的 number 和 object；Java 侧稳定 key 建议用 `PiEngineNumberKey` 和 `PiEngineContextKey<T>` 收成常量。
+## 最短接入链路
+
+1. 用 `PiDoubleExpression`、`PiIntExpression`、`PiBooleanExpression` 写数据模型字段。
+2. 用 `PiDataDefinition` 声明 JSON 文件夹、Codec 和校验。
+3. 用 `PiDataReloadListener` 读取普通 JSON，或用 `PiDataPackRegistries.action(...)` 注册 Minecraft 数据包注册表。
+4. 运行时把事件、实体、物品、方块实体等输入绑定成 `PiEngineContext`。
+5. 执行 action 或已编译内容，然后从 `PiEngineFrame` 读取结果。
 
 ```java
-public static final PiEngineNumberKey BASE_DAMAGE = PiEngineNumberKey.of("baseDamage");
-public static final PiEngineNumberKey POWER = PiEngineNumberKey.of("power");
-
 PiEngineContext context = PiEngineContext.builder()
-        .number(BASE_DAMAGE, 6)
-        .number(POWER, 3)
-        .number("resource", 20)
-        .number("cost", 5)
+        .number("baseDamage", 6)
+        .number("spellPower", 3)
         .object("actor", player)
         .object("target", target)
         .build();
 ```
-
-这套系统的重点不是替代 Java 逻辑，而是把“可配置的计算、条件和流程组合”从硬编码里拿出来，并在加载阶段提前发现错误。

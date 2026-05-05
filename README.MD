@@ -2,31 +2,33 @@
 
 [English](README_EN.md)
 
-PiDataGraph 把数据包里的公式、条件和动作链编译成 Java 可以直接执行的运行时逻辑。它适合做技能、机器、事件监听、UI 预览、配置驱动玩法和其他需要“数据决定执行流程”的系统。
+PiDataGraph 是给 Forge 1.20.1 用的数据驱动运行库。它把 JSON 里的公式、条件和动作链变成 Java 可以校验、编译和执行的对象。
 
-当前主线版本文档：
-
-- [1.20.1 中文 Wiki](docs/wiki/1.20.1/zhCN/README.md)
-- [1.20.1 English Wiki](docs/wiki/1.20.1/enUS/README.md)
-
-## 现在负责什么
+它现在支持这些内容：
 
 - 表达式：`PiDoubleExpression`、`PiIntExpression`、`PiBooleanExpression`
-- 数据加载和校验：`PiDataDefinition`、`PiDataSet`、`PiDataRuntimeLoader`
+- 数据文件：`PiDataDefinition`、`PiDataSet`、`PiDataReloadListener`、`PiDataProvider`
 - 动作链：`PiEngineAction`、`PiEnginePredicate`、`PiEngineActionRegistry`
-- 执行上下文：`PiEngineContext`、`PiEngineNumberKey`、`PiEngineFlagKey`、`PiEngineContextKey`、`PiEngineContextBindings`
-- 运行时同步桥接：`PiDataGraphSync`，消费 PiSerializeKit 和 PiNet
+- 执行输入和输出：`PiEngineContext`、`PiEngineContextBinder`、`PiEngineFrame`
+- Minecraft 数据包注册表：`PiDataPackRegistries.action(...)`、`PiEngineRunner`
+- 基础有向图执行：`PiGraphDefinition`、`PiGraphExecutor`
+- 同步桥接：`PiDataGraphState`、`PiDataGraphSync`
 
-README 只保留入口。具体怎么写 JSON、怎么注册 action、怎么做 datagen、怎么同步状态，都放在 versioned wiki 里维护。
+当前版本：`com.mihono.pickaid:pidatagraph:0.0.4-dev`
+
+## 文档
+
+- [1.20.1 中文文档](docs/wiki/1.20.1/zhCN/README.md)
+- [1.20.1 English docs](docs/wiki/1.20.1/enUS/README.md)
 
 ## Maven
 
-当前开发版本在 `project.toml` 中维护。下游通常通过 PickAID Maven 引入，并让模板处理 jar-in-jar：
+使用 PickAID Maven 时，普通下游项目通常同时写 `implementation` 和 `jarjar`：
 
 ```toml
 [dependencies.implementation]
-pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:<version>", transitive = false }
+pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.4-dev", transitive = false }
 
 [dependencies.jarjar]
-pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:<version>", range = "[<version>,0.1.0)", transitive = false }
+pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.4-dev", range = "[0.0.4,0.1.0)", transitive = false }
 ```

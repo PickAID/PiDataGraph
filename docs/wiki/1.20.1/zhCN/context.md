@@ -1,138 +1,90 @@
 # 执行上下文
 
-`PiEngineContext` 是一次执行的输入。它有两类值：
+`PiEngineContext` 是一次执行的输入。number 进入表达式变量表，object 交给 Java action 或 predicate 使用。
 
-- number：表达式、`number_range`、公式会读取它。
-- object：Java 叶子 action 和对象类 predicate 会读取它。
-
-Java 侧建议把稳定 key 收成常量。执行输入的 number 用 `PiEngineNumberKey`，object 用 `PiEngineContextKey<T>`。frame 输出如果只是简单变量名，也可以继续复用 `PiEngineNumberKey` / `PiEngineFlagKey`；如果输出名带 `hud.mana_fill` 这种分组路径，用 `PiEngineValueKey`。
+## Java 常量 key
 
 ```java
 public static final PiEngineNumberKey BASE_DAMAGE = PiEngineNumberKey.of("baseDamage");
-public static final PiEngineNumberKey RESOURCE = PiEngineNumberKey.of("resource");
-public static final PiEngineNumberKey COST = PiEngineNumberKey.of("cost");
-public static final PiEngineContextKey<Player> ACTOR = PiEngineContextKey.of("actor", Player.class);
-public static final PiEngineContextKey<LivingEntity> TARGET = PiEngineContextKey.of("target", LivingEntity.class);
-public static final PiEngineContextKey<DamageSource> DAMAGE_SOURCE = PiEngineContextKey.of("damageSource", DamageSource.class);
+public static final PiEngineContextKey<LivingEntity> TARGET =
+        PiEngineContextKey.of("target", LivingEntity.class);
+public static final PiEngineValueKey<Number> HUD_MANA_FILL =
+        PiEngineValueKey.number("hud.mana_fill");
+```
 
+```java
 PiEngineContext context = PiEngineContext.builder()
-        .number(BASE_DAMAGE, baseDamage)
-        .number(RESOURCE, currentMana)
-        .number(COST, manaCost)
-        .object(ACTOR, player)
+        .number(BASE_DAMAGE, 6)
         .object(TARGET, target)
-        .object(DAMAGE_SOURCE, damageSource)
         .build();
 ```
 
-JSON 里仍然写 `"baseDamage"`、`"resource"` 这些变量名；key 常量解决的是 Java 侧拼错和重复手写的问题。
+规则：
 
-读取结果时也可以复用同一组 key：
+- context number 必须是表达式变量名，例如 `baseDamage`。
+- context object 也使用普通变量名，例如 `target`。
+- frame 输出可以用普通变量名，也可以用 dotted path，例如 `hud.mana_fill`。
+
+## 读取执行结果
 
 ```java
-PiEngineFlagKey ACCEPTED = PiEngineFlagKey.of("accepted");
-PiEngineNumberKey DAMAGE = PiEngineNumberKey.of("damage");
-PiEngineNumberKey COOLDOWN = PiEngineNumberKey.of("cooldown");
-PiEngineContextKey<Vec3> IMPACT = PiEngineContextKey.of("impact", Vec3.class);
-PiEngineValueKey<Number> HUD_MANA_FILL = PiEngineValueKey.number("hud.mana_fill");
-PiEngineValueKey<Boolean> HUD_READY = PiEngineValueKey.flag("hud.ready");
+PiEngineFrame frame = action.execute(context);
 
-boolean accepted = frame.flagOr(ACCEPTED, false);
-double damage = frame.numberOr(DAMAGE, 0.0D);
-int cooldown = frame.integerOr(COOLDOWN, 0);
-Vec3 impact = frame.object(IMPACT).orElse(Vec3.ZERO);
-double manaFill = frame.numberOr(HUD_MANA_FILL, 0.0D);
-boolean ready = frame.flagOr(HUD_READY, false);
+double damage = frame.numberOr(PiEngineNumberKey.of("damage"), 0);
+boolean accepted = frame.flagOr(PiEngineFlagKey.of("accepted"), false);
+double manaFill = frame.numberOr(HUD_MANA_FILL, 0);
 ```
 
-这个区分很重要：context number 会进入表达式变量表，所以只能是 `baseDamage` 这种变量名；frame 输出只是结果路径，可以用 dotted path 做分组。
-
-`emit_number`、`emit_flag`、`emit_object` 的 `name` 写入 frame 输出，所以也可以用 dotted path：
+`emit_number`、`emit_flag`、`emit_object` 的 `name` 写入 `PiEngineFrame`，因此支持 dotted path：
 
 ```json
 {
   "type": "pidatagraph:emit_number",
   "name": "hud.mana_fill",
-  "value": "resource / maxResource"
+  "value": "mana / maxMana"
 }
 ```
 
-## key 从哪里来
+## Minecraft 绑定 helper
 
-- Java 调用方通过 `PiEngineContext.builder()` 放入。
-- `repeat` / `for_each_object` 写入循环下标。
-- `with_number` / `with_context` 派生临时 number。
-- `with_context` 给已有 object 取别名后传给子链。
-
-`number_range` 只检查一个已经存在的 number key：
-
-```json
-{
-  "type": "pidatagraph:number_range",
-  "key": "distance",
-  "max": "range"
-}
-```
-
-## 常用 key 约定
-
-| 场景 | number | object |
-| --- | --- | --- |
-| 攻击或命中 | `baseDamage`, `distance`, `resource`, `cost`, `cooldown`, `enchantmentLevel` | `actor`, `target`, `weapon`, `damageSource` |
-| 投掷物命中 | `baseDamage`, `speed`, `distance`, `age` | `projectile`, `owner`, `hitEntity`, `hitPos` |
-| 机器 tick | `progress`, `energy`, `maxEnergy`, `temperature`, `speed` | `level`, `blockEntity`, `itemInput`, `itemOutput` |
-| UI 预览 | `progress`, `resource`, `maxResource`, `cooldown` | `viewer`, `stack`, `previewTarget` |
-
-## 快速绑定 Minecraft 对象
-
-`PiEngineContextBindings` 把常见对象同时放成 object 和表达式可读的 number。
+`PiEngineContextBindings` 会同时写入 object 和常用 number。
 
 ```java
 PiEngineContext context = PiEngineContextBindings.itemStack(
-        PiEngineContextBindings.vector(PiEngineContext.builder(), "impact", hit.getLocation()),
+        PiEngineContextBindings.living(
+                PiEngineContext.builder(),
+                "target",
+                target),
         "weapon",
         player.getMainHandItem())
-        .number(BASE_DAMAGE, 6)
-        .number(RESOURCE, mana)
-        .number(COST, cost)
-        .object("actor", player)
+        .number("baseDamage", 6)
         .build();
 ```
 
-上面会提供：
+已支持的绑定：
 
-| key | 值 |
+| 方法 | 写入内容 |
 | --- | --- |
-| `impact` | `Vec3` object |
-| `impactX`, `impactY`, `impactZ`, `impactLength` | 命中位置坐标和长度 |
-| `weapon` | `ItemStack` object |
-| `weaponCount`, `weaponDamage`, `weaponMaxDamage`, `weaponDamageRatio`, `weaponEmpty` | 物品堆数量和耐久状态 |
+| `level` | `level`, `gameTime`, `dayTime`, `clientSide` |
+| `random` | `random` object，并接入表达式 `rand()` |
+| `entity` | 坐标、旋转、tick、onGround、delta |
+| `living` | entity 内容，加 health、maxHealth、absorption、armor |
+| `vector` | `Vec3` object，加 X/Y/Z/Length |
+| `blockPos` | `BlockPos` object，加 X/Y/Z |
+| `itemStack` | `ItemStack` object，加 count、damage、maxDamage、damageRatio、empty |
+| `damageSource` | `damageSource` object |
+| `hand` | `hand` object |
 
-也可以绑定 `BlockPos`、`RandomSource`、`Entity`、`LivingEntity`、`Level`、`DamageSource`、`InteractionHand`。
+## Contract
 
-## Context 契约
-
-叶子 action 应该声明自己需要哪些运行时输入：
-
-```java
-PiEngineContextContract contract = action.contextContract();
-```
-
-校验时把入口会提供的 number 和 object 写清楚：
+Java action 和 binder 用 `PiEngineContextContract` 声明输入。
 
 ```java
-action.verify(PiDataBuildContext.builder()
-        .expressionScope(PiExpressionScope.of("baseDamage", "power", "resource", "cost"))
-        .object("hitEntity", LivingEntity.class)
+return PiEngineContextContract.builder()
+        .number("baseDamage")
+        .object("target", LivingEntity.class)
         .object("damageSource", DamageSource.class)
-        .object("weapon", ItemStack.class)
-        .build(), "examplemod:fire_hit");
+        .build();
 ```
 
-如果你已经有 action 契约，可以让 build context 吸收它：
-
-```java
-PiEngineBuildContext buildContext = PiEngineBuildContext.standard()
-        .withScope(PiExpressionScope.of("baseDamage", "power", "resource", "cost"))
-        .withContextContract(action.contextContract());
-```
+`PiEngineRunner` 和 `verify(...)` 会用 contract 提前发现缺失 number、缺失 object 和类型错误。

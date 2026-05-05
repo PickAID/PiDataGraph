@@ -1,75 +1,90 @@
-# Context
+# Runtime Context
 
-`PiEngineContext` is the input for one execution. It stores numbers for expressions and objects for Java leaf actions.
+`PiEngineContext` is the input for one execution. Numbers become expression variables. Objects are read by Java actions or predicates.
 
-Stable Java-side keys should be constants. Use `PiEngineNumberKey` for execution input numbers and `PiEngineContextKey<T>` for objects. Simple frame outputs can reuse `PiEngineNumberKey` / `PiEngineFlagKey`; dotted output paths such as `hud.mana_fill` should use `PiEngineValueKey`.
+## Java Key Constants
 
 ```java
 public static final PiEngineNumberKey BASE_DAMAGE = PiEngineNumberKey.of("baseDamage");
-public static final PiEngineNumberKey RESOURCE = PiEngineNumberKey.of("resource");
-public static final PiEngineNumberKey COST = PiEngineNumberKey.of("cost");
-public static final PiEngineContextKey<Player> ACTOR = PiEngineContextKey.of("actor", Player.class);
-public static final PiEngineContextKey<LivingEntity> TARGET = PiEngineContextKey.of("target", LivingEntity.class);
-public static final PiEngineContextKey<DamageSource> DAMAGE_SOURCE = PiEngineContextKey.of("damageSource", DamageSource.class);
+public static final PiEngineContextKey<LivingEntity> TARGET =
+        PiEngineContextKey.of("target", LivingEntity.class);
+public static final PiEngineValueKey<Number> HUD_MANA_FILL =
+        PiEngineValueKey.number("hud.mana_fill");
+```
 
+```java
 PiEngineContext context = PiEngineContext.builder()
-        .number(BASE_DAMAGE, baseDamage)
-        .number(RESOURCE, currentMana)
-        .number(COST, manaCost)
-        .object(ACTOR, player)
+        .number(BASE_DAMAGE, 6)
         .object(TARGET, target)
-        .object(DAMAGE_SOURCE, damageSource)
         .build();
 ```
 
-JSON still uses variable names such as `"baseDamage"` and `"resource"`. The key constants keep Java binding and frame reads from repeating raw strings.
+Rules:
 
-Frame reads can reuse the same keys:
+- Context numbers must be expression variable names, such as `baseDamage`.
+- Context objects also use plain variable names, such as `target`.
+- Frame outputs may use plain names or dotted paths, such as `hud.mana_fill`.
+
+## Read Results
 
 ```java
-PiEngineFlagKey ACCEPTED = PiEngineFlagKey.of("accepted");
-PiEngineNumberKey DAMAGE = PiEngineNumberKey.of("damage");
-PiEngineNumberKey COOLDOWN = PiEngineNumberKey.of("cooldown");
-PiEngineContextKey<Vec3> IMPACT = PiEngineContextKey.of("impact", Vec3.class);
-PiEngineValueKey<Number> HUD_MANA_FILL = PiEngineValueKey.number("hud.mana_fill");
-PiEngineValueKey<Boolean> HUD_READY = PiEngineValueKey.flag("hud.ready");
+PiEngineFrame frame = action.execute(context);
 
-boolean accepted = frame.flagOr(ACCEPTED, false);
-double damage = frame.numberOr(DAMAGE, 0.0D);
-int cooldown = frame.integerOr(COOLDOWN, 0);
-Vec3 impact = frame.object(IMPACT).orElse(Vec3.ZERO);
-double manaFill = frame.numberOr(HUD_MANA_FILL, 0.0D);
-boolean ready = frame.flagOr(HUD_READY, false);
+double damage = frame.numberOr(PiEngineNumberKey.of("damage"), 0);
+boolean accepted = frame.flagOr(PiEngineFlagKey.of("accepted"), false);
+double manaFill = frame.numberOr(HUD_MANA_FILL, 0);
 ```
 
-The distinction matters: context numbers become expression variables, so they must be plain names such as `baseDamage`; frame outputs are result paths and may use dotted grouping.
-
-`emit_number`, `emit_flag`, and `emit_object` write frame outputs, so their `name` may also use dotted paths:
+`emit_number`, `emit_flag`, and `emit_object` write to `PiEngineFrame`, so their `name` can be a dotted path:
 
 ```json
 {
   "type": "pidatagraph:emit_number",
   "name": "hud.mana_fill",
-  "value": "resource / maxResource"
+  "value": "mana / maxMana"
 }
 ```
 
-Keys come from the Java caller, loop actions, `with_number`, or `with_context`.
+## Minecraft Binding Helpers
 
-`PiEngineContextBindings` reduces repeated Minecraft setup code:
+`PiEngineContextBindings` writes both objects and common numbers.
 
 ```java
 PiEngineContext context = PiEngineContextBindings.itemStack(
-        PiEngineContextBindings.vector(PiEngineContext.builder(), "impact", hit.getLocation()),
+        PiEngineContextBindings.living(
+                PiEngineContext.builder(),
+                "target",
+                target),
         "weapon",
         player.getMainHandItem())
-        .number(BASE_DAMAGE, 6)
-        .number(RESOURCE, mana)
-        .number(COST, cost)
-        .object("actor", player)
+        .number("baseDamage", 6)
         .build();
 ```
 
-This provides `impact`, `impactX`, `impactY`, `impactZ`, `impactLength`, `weapon`, `weaponCount`, `weaponDamage`, `weaponMaxDamage`, `weaponDamageRatio`, and `weaponEmpty`.
+Supported bindings:
 
-Leaf actions should declare required inputs with `PiEngineContextContract` and validate them during data load.
+| Method | Writes |
+| --- | --- |
+| `level` | `level`, `gameTime`, `dayTime`, `clientSide` |
+| `random` | `random` object and expression `rand()` |
+| `entity` | position, rotation, tick, onGround, delta |
+| `living` | entity values plus health, maxHealth, absorption, armor |
+| `vector` | `Vec3` object plus X/Y/Z/Length |
+| `blockPos` | `BlockPos` object plus X/Y/Z |
+| `itemStack` | `ItemStack` object plus count, damage, maxDamage, damageRatio, empty |
+| `damageSource` | `damageSource` object |
+| `hand` | `hand` object |
+
+## Contract
+
+Java actions and binders declare inputs with `PiEngineContextContract`.
+
+```java
+return PiEngineContextContract.builder()
+        .number("baseDamage")
+        .object("target", LivingEntity.class)
+        .object("damageSource", DamageSource.class)
+        .build();
+```
+
+`PiEngineRunner` and `verify(...)` use contracts to report missing numbers, missing objects, and type mismatches before execution.

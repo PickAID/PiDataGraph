@@ -1,28 +1,28 @@
-# PiDataGraph 1.20.1 Wiki
+# PiDataGraph 1.20.1
 
-PiDataGraph 1.20.1 docs are split by usage:
+PiDataGraph provides a compact data-driven runtime layer: Codec-backed JSON files, expressions for numbers and conditions, action/predicate chains for flow, and `PiEngineContext` for connecting the data to game code.
 
-- [Context](context.md): `PiEngineContext`, common keys, Minecraft object bindings.
-- [Data](data.md): expressions, datapack JSON, datagen, validation.
-- [Actions](actions.md): built-in actions, predicates, custom Java leaf actions.
-- [Sync](sync.md): syncing graph state through PiSerializeKit and PiNet.
+## Pages
+
+- [Data and expressions](data.md)
+- [Runtime context](context.md)
+- [Actions and predicates](actions.md)
+- [Datapack registries and runner](registry-runner.md)
+- [Core graph execution](core-graph.md)
+- [Sync bridge](sync.md)
 
 ## Shortest Path
 
-1. Define data shapes with `PiDoubleExpression` / `PiBooleanExpression` fields.
-2. Use `PiDataDefinition` to declare codec and validation.
-3. Use `PiEngineContentType` or `PiEngineActionData` to compile or verify at load time.
-4. At runtime, put the current numbers and objects into `PiEngineContext`; use `PiEngineNumberKey` and `PiEngineContextKey<T>` constants for stable Java-side keys.
+1. Use `PiDoubleExpression`, `PiIntExpression`, and `PiBooleanExpression` in your data model.
+2. Declare the JSON folder, Codec, and validation with `PiDataDefinition`.
+3. Load normal JSON with `PiDataReloadListener`, or register action data with `PiDataPackRegistries.action(...)`.
+4. Bind the current event, entity, item, block entity, or runtime object into `PiEngineContext`.
+5. Execute an action or compiled entry, then read results from `PiEngineFrame`.
 
 ```java
-public static final PiEngineNumberKey BASE_DAMAGE = PiEngineNumberKey.of("baseDamage");
-public static final PiEngineNumberKey POWER = PiEngineNumberKey.of("power");
-
 PiEngineContext context = PiEngineContext.builder()
-        .number(BASE_DAMAGE, 6)
-        .number(POWER, 3)
-        .number("resource", 20)
-        .number("cost", 5)
+        .number("baseDamage", 6)
+        .number("spellPower", 3)
         .object("actor", player)
         .object("target", target)
         .build();
