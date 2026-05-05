@@ -2,87 +2,31 @@
 
 [English](README_EN.md)
 
-`PiDataGraph` 是 Pi 系列的数据流图运行时。它的职责不是替代配置系统，也不是做脚本语言；它负责把一组节点、端口和连线变成可校验、可排序、可执行的数据流。
+PiDataGraph 把数据包里的公式、条件和动作链编译成 Java 可以直接执行的运行时逻辑。它适合做技能、机器、事件监听、UI 预览、配置驱动玩法和其他需要“数据决定执行流程”的系统。
 
-当前目标是先把核心模型做稳，再接 datapack codec、reload registry 和脚本/调试入口。
+当前主线版本文档：
 
-## 当前已实现
+- [1.20.1 中文 Wiki](docs/wiki/1.20.1/zhCN/README.md)
+- [1.20.1 English Wiki](docs/wiki/1.20.1/enUS/README.md)
 
-核心模型：
+## 现在负责什么
 
-1. `PiGraphNodeId` / `PiGraphPortId`
-2. `PiGraphNode`
-3. `PiGraphEndpoint`
-4. `PiGraphEdge`
-5. `PiGraphDefinition`
+- 表达式：`PiDoubleExpression`、`PiIntExpression`、`PiBooleanExpression`
+- 数据加载和校验：`PiDataDefinition`、`PiDataSet`、`PiDataRuntimeLoader`
+- 动作链：`PiEngineAction`、`PiEnginePredicate`、`PiEngineActionRegistry`
+- 执行上下文：`PiEngineContext`、`PiEngineNumberKey`、`PiEngineFlagKey`、`PiEngineContextKey`、`PiEngineContextBindings`
+- 运行时同步桥接：`PiDataGraphSync`，消费 PiSerializeKit 和 PiNet
 
-校验与计划：
+README 只保留入口。具体怎么写 JSON、怎么注册 action、怎么做 datagen、怎么同步状态，都放在 versioned wiki 里维护。
 
-1. 重复 node id 在构造图时直接失败；
-2. 缺失 source / target node 会被诊断；
-3. 缺失 input / output port 会被诊断；
-4. cycle 会被诊断；
-5. `PiGraphPlanner` 会生成稳定拓扑顺序。
+## Maven
 
-运行时：
+当前开发版本在 `project.toml` 中维护。下游通常通过 PickAID Maven 引入，并让模板处理 jar-in-jar：
 
-1. `PiGraphNodeType`
-2. `PiGraphNodeTypeRegistry`
-3. `PiGraphNodeExecution`
-4. `PiGraphExecutor`
-5. `PiGraphExecutionResult`
+```toml
+[dependencies.implementation]
+pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:<version>", transitive = false }
 
-执行器会按拓扑顺序执行节点，并把上游 output 沿 edge 送到下游 input。
-
-## 最小示例
-
-```java
-PiGraphPortId in = new PiGraphPortId("in");
-PiGraphPortId out = new PiGraphPortId("out");
-
-PiGraphNode source = new PiGraphNode(
-        new PiGraphNodeId("source"),
-        id("constant"),
-        List.of(),
-        List.of(out));
-
-PiGraphNode target = new PiGraphNode(
-        new PiGraphNodeId("target"),
-        id("double"),
-        List.of(in),
-        List.of(out));
-
-PiGraphDefinition graph = new PiGraphDefinition(
-        id("example"),
-        List.of(source, target),
-        List.of(new PiGraphEdge(
-                new PiGraphEndpoint(source.id(), out),
-                new PiGraphEndpoint(target.id(), in))));
-
-PiGraphNodeTypeRegistry registry = PiGraphNodeTypeRegistry.builder()
-        .register(new PiGraphNodeType(id("constant"), execution -> execution.output(out, 21)))
-        .register(new PiGraphNodeType(id("double"), execution ->
-                execution.output(out, execution.input(in, Integer.class) * 2)))
-        .build();
-
-PiGraphExecutionResult result = PiGraphExecutor.execute(graph, registry);
-int value = result.output(target.id(), out, Integer.class);
-```
-
-## 当前边界
-
-这版先只做 Java runtime core。暂时不把 KubeJS、Architectury 或额外 loader 依赖塞进来，因为核心图模型不需要它们。
-
-下一步应该做：
-
-1. datapack JSON / codec 表达；
-2. reload 后的 graph registry；
-3. node type 的 schema/port contract；
-4. 更好的执行错误上下文；
-5. 和 Pibrary config/recipe/reload 体系的消费样例。
-
-## 验证
-
-```bash
-bash ./gradlew test --no-daemon
+[dependencies.jarjar]
+pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:<version>", range = "[<version>,0.1.0)", transitive = false }
 ```
