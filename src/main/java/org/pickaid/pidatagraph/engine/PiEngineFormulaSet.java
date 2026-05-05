@@ -3,6 +3,8 @@ package org.pickaid.pidatagraph.engine;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.pickaid.pidatagraph.engine.context.PiEngineKeyNames;
+import org.pickaid.pidatagraph.engine.context.PiEngineValueKey;
 import org.pickaid.pidatagraph.expression.PiBooleanExpression;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 import org.pickaid.pidatagraph.expression.PiExpressionLanguage;
@@ -36,14 +38,26 @@ public final class PiEngineFormulaSet {
             return this;
         }
 
+        public Builder number(PiEngineValueKey<? extends Number> key, PiDoubleExpression expression) {
+            return number(Objects.requireNonNull(key, "key").name(), expression);
+        }
+
         public Builder integer(String key, PiIntExpression expression) {
             entries.add(new IntegerEntry(key, expression));
             return this;
         }
 
+        public Builder integer(PiEngineValueKey<? extends Number> key, PiIntExpression expression) {
+            return integer(Objects.requireNonNull(key, "key").name(), expression);
+        }
+
         public Builder flag(String key, PiBooleanExpression expression) {
             entries.add(new FlagEntry(key, expression));
             return this;
+        }
+
+        public Builder flag(PiEngineValueKey<Boolean> key, PiBooleanExpression expression) {
+            return flag(Objects.requireNonNull(key, "key").name(), expression);
         }
 
         public PiEngineFormulaSet build() {
@@ -57,7 +71,7 @@ public final class PiEngineFormulaSet {
 
     private record NumberEntry(String key, PiDoubleExpression expression) implements SourceEntry {
         private NumberEntry {
-            key = Objects.requireNonNull(key, "key");
+            key = checkFrameKey(key);
             expression = Objects.requireNonNull(expression, "expression");
         }
 
@@ -70,7 +84,7 @@ public final class PiEngineFormulaSet {
 
     private record IntegerEntry(String key, PiIntExpression expression) implements SourceEntry {
         private IntegerEntry {
-            key = Objects.requireNonNull(key, "key");
+            key = checkFrameKey(key);
             expression = Objects.requireNonNull(expression, "expression");
         }
 
@@ -83,7 +97,7 @@ public final class PiEngineFormulaSet {
 
     private record FlagEntry(String key, PiBooleanExpression expression) implements SourceEntry {
         private FlagEntry {
-            key = Objects.requireNonNull(key, "key");
+            key = checkFrameKey(key);
             expression = Objects.requireNonNull(expression, "expression");
         }
 
@@ -92,5 +106,9 @@ public final class PiEngineFormulaSet {
             var compiled = expression.compile(language, scope);
             return new PiCompiledFormulaSet.Entry<>(key, context -> context.evaluate(compiled));
         }
+    }
+
+    private static String checkFrameKey(String key) {
+        return PiEngineKeyNames.frameValue(key);
     }
 }

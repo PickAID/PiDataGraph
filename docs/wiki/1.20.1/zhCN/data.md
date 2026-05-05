@@ -89,6 +89,23 @@ PiEngineLibrary<CompiledSpellFormula> formulas = PiEngineLibrary.compile(
         COMPILED_SPELL_FORMULAS);
 ```
 
+## Java 侧公式组
+
+如果公式不来自 JSON，也可以用 `PiEngineFormulaSet` 直接在 Java 里组织一组 frame 输出。
+
+```java
+PiEngineValueKey<Number> MANA_FILL = PiEngineValueKey.number("hud.mana_fill");
+PiEngineValueKey<Boolean> CAST_READY = PiEngineValueKey.flag("hud.cast_ready");
+
+PiCompiledFormulaSet hud = PiEngineFormulaSet.builder()
+        .number(MANA_FILL, PiDoubleExpression.of("mana / maxMana"))
+        .flag(CAST_READY, PiBooleanExpression.of("mana >= cost"))
+        .build()
+        .compile(PiExpressionLanguage.standard(), PiExpressionScope.of("mana", "maxMana", "cost"));
+
+PiEngineFrame frame = hud.evaluate(context);
+```
+
 ## 读取普通数据包 JSON
 
 ```java

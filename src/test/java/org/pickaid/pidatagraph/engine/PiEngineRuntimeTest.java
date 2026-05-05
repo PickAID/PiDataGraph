@@ -12,6 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 import org.pickaid.pidatagraph.data.PiDataDefinition;
 import org.pickaid.pidatagraph.data.PiDataSet;
+import org.pickaid.pidatagraph.engine.context.PiEngineValueKey;
 import org.pickaid.pidatagraph.expression.PiBooleanExpression;
 import org.pickaid.pidatagraph.expression.PiCompiledBooleanExpression;
 import org.pickaid.pidatagraph.expression.PiCompiledDoubleExpression;
@@ -73,6 +74,31 @@ class PiEngineRuntimeTest {
         assertEquals(0.6, frame.number("hud.mana_fill"), 0.0001);
         assertFalse(frame.flag("hud.cast_ready"));
         assertEquals(12, frame.integer("hud.cooldown_ticks"));
+    }
+
+    @Test
+    void formulaSetCanUseValueKeysAndRejectsBadFrameKeysAtBuildTime() {
+        PiEngineValueKey<Number> manaFill = PiEngineValueKey.number("hud.mana_fill");
+        PiEngineValueKey<Boolean> castReady = PiEngineValueKey.flag("hud.cast_ready");
+
+        PiCompiledFormulaSet hud = PiEngineFormulaSet.builder()
+                .number(manaFill, PiDoubleExpression.of("mana / maxMana"))
+                .flag(castReady, PiBooleanExpression.of("mana >= cost"))
+                .build()
+                .compile(PiExpressionLanguage.standard(), PiExpressionScope.of("mana", "maxMana", "cost"));
+
+        PiEngineFrame frame = hud.evaluate(PiEngineContext.builder()
+                .number("mana", 60)
+                .number("maxMana", 100)
+                .number("cost", 20)
+                .build());
+
+        assertEquals(0.6, frame.number(manaFill), 0.0001);
+        assertTrue(frame.flag(castReady));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                PiEngineFormulaSet.builder().number("hud.bad-key", PiDoubleExpression.of("1")));
+        assertEquals("invalid expression variable: bad-key", error.getMessage());
     }
 
     @Test

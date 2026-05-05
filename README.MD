@@ -10,11 +10,12 @@ PiDataGraph 是给 Forge 1.20.1 用的数据驱动运行库。它把 JSON 里的
 - 数据文件：`PiDataDefinition`、`PiDataSet`、`PiDataReloadListener`、`PiDataProvider`
 - 动作链：`PiEngineAction`、`PiEnginePredicate`、`PiEngineActionRegistry`
 - 执行输入和输出：`PiEngineContext`、`PiEngineContextBinder`、`PiEngineFrame`
+- Java 侧公式组：`PiEngineFormulaSet`、`PiCompiledFormulaSet`
 - Minecraft 数据包注册表：`PiDataPackRegistries.action(...)`、`PiEngineRunner`
 - 基础有向图执行：`PiGraphDefinition`、`PiGraphExecutor`
 - 同步桥接：`PiDataGraphState`、`PiDataGraphSync`
 
-当前版本：`com.mihono.pickaid:pidatagraph:0.0.4-dev`
+当前版本：`com.mihono.pickaid:pidatagraph:0.0.5-dev`
 
 ## 文档
 
@@ -27,8 +28,8 @@ PiDataGraph 是给 Forge 1.20.1 用的数据驱动运行库。它把 JSON 里的
 
 ```toml
 [dependencies.implementation]
-pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.4-dev", transitive = false }
+pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.5-dev", transitive = false }
 
 [dependencies.jarjar]
-pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.4-dev", range = "[0.0.4,0.1.0)", transitive = false }
+pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.5-dev", range = "[0.0.5,0.1.0)", transitive = false }
 ```
