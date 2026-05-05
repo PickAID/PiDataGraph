@@ -349,7 +349,9 @@ dependencies {
     (templateDependencies + templateDevPackDependencies).each { dependencySpec ->
         def baseDependency = createConfiguredDependency(dependencySpec.notation, dependencySpec.transitive)
         def resolvedDependency = dependencySpec.deobf ? fg.deobf(baseDependency) : baseDependency
-        add(dependencySpec.configuration, resolvedDependency)
+        if (dependencySpec.configuration != "jarJar") {
+            add(dependencySpec.configuration, resolvedDependency)
+        }
 
         if (dependencySpec.range) {
             jarJar(group: dependencySpec.group, name: dependencySpec.artifact, version: dependencySpec.range)

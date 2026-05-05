@@ -4,12 +4,12 @@ template_version = "1.20.1-template-1.0.0"
 [mod]
 mod_id = "pidatagraph"
 mod_name = "PiDataGraph"
-version = "0.0.1"
+version = "0.0.2"
 version_suffix = "dev"
 group = "com.mihono.pickaid"
 authors = ["PickAID Team"]
 license = "MIT"
-description = "Data-flow graph runtime for gameplay logic."
+description = "Expression and codec-backed data tools for gameplay definitions."
 credits = "None"
 issue_tracker_url = "https://github.com/PickAID/PiDataGraph/issues"
 
@@ -35,8 +35,21 @@ kubejs = false
 # Optional version overrides for enabled features only.
 
 [repositories]
+central = "https://repo.maven.apache.org/maven2"
 
 [dependencies]
+[dependencies.implementation]
+exp4j = { notation = "net.objecthunter:exp4j:0.4.8", transitive = false }
+piserializekit = { notation = "com.mihono.pickaid:piserializekit:0.0.7", transitive = false }
+pinet = { notation = "com.mihono.pickaid:pinet:0.0.4", transitive = false }
+
+[dependencies.jarjar]
+exp4j = { notation = "net.objecthunter:exp4j:0.4.8", range = "[0.4.8,0.5)", transitive = false }
+piserializekit = { notation = "com.mihono.pickaid:piserializekit:0.0.7", range = "[0.0.7,0.1.0)", transitive = false }
+pinet = { notation = "com.mihono.pickaid:pinet:0.0.4", range = "[0.0.4,0.1.0)", transitive = false }
+
+[dependencies.annotation_processor]
+piserializekit_processor = { notation = "com.mihono.pickaid:piserializekit:0.0.7", transitive = false }
 
 [publish]
 # Leave tokens out of git. Prefer environment variables for real releases.
