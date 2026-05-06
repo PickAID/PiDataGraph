@@ -24,6 +24,19 @@ PiDataGraphSync.receive(runtime, new ResourceLocation("examplemod", "fire_hit"),
 });
 ```
 
+When the project has a graph facade, sync code should pass the entry key exposed by that facade:
+
+```java
+PiDataGraphState state = new PiDataGraphState(
+        HitGraph.key("fire_hit"),
+        revision,
+        payload);
+
+PiDataGraphSync.receive(runtime, HitGraph.key("fire_hit"), state -> {
+    CompoundTag payload = state.payload;
+});
+```
+
 Available methods:
 
 | Method | Purpose |
@@ -33,5 +46,7 @@ Available methods:
 | `receive(runtime, graphId, consumer)` | Registers a receiver for one graph id |
 | `matcher(graphId)` | Creates a PiNet matcher |
 | `target(graphId)` | Creates a PiNet target |
+
+`receive`, `matcher`, and `target` accept either `ResourceLocation` or `ResourceKey<?>`.
 
 `PiDataGraphState` contains `graphId`, `revision`, and `payload`. `revision` must be at least 0.

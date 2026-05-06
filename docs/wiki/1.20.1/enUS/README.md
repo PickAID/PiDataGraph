@@ -1,29 +1,26 @@
 # PiDataGraph 1.20.1
 
-PiDataGraph provides a compact data-driven runtime layer: Codec-backed JSON files, expressions for numbers and conditions, action/predicate chains for flow, and `PiEngineContext` for connecting the data to game code.
+PiDataGraph provides a compact data-driven runtime layer: Codec-backed JSON files, expressions for numbers and conditions, `PiEngineContext` for connecting data to game code, and runners for execution and validation.
 
 ## Pages
 
-- [Data and expressions](data.md)
+- [Data files](data.md)
 - [Runtime context](context.md)
 - [Actions and predicates](actions.md)
+- [Annotation generation](annotations.md)
 - [Datapack registries and runner](registry-runner.md)
 - [Core graph execution](core-graph.md)
 - [Sync bridge](sync.md)
 
 ## Shortest Path
 
-1. Use `PiDoubleExpression`, `PiIntExpression`, and `PiBooleanExpression` in your data model.
-2. Declare the JSON folder, Codec, and validation with `PiDataDefinition`.
-3. Load normal JSON with `PiDataReloadListener`, or register action data with `PiDataPackRegistries.action(...)`.
-4. Bind the current event, entity, item, block entity, or runtime object into `PiEngineContext`.
-5. Execute an action or compiled entry, then read results from `PiEngineFrame`.
+1. Declare a datapack action registry with `@PiDataGraphModule` and `@PiDataPackRegistry`.
+2. Declare runtime input and output with `@PiGraphInput(..., facade = "HitGraph")` and `@PiGraphOutput`.
+3. The compiler generates Forge subscribers that register the datapack registry and reload verifier.
+4. Generate default JSON with `HitGraph.dataSet()` and `HitGraph.validationContext()`.
+5. Run with `HitGraph.run(level.registryAccess(), "entry_id", input)` and read the output record.
 
 ```java
-PiEngineContext context = PiEngineContext.builder()
-        .number("baseDamage", 6)
-        .number("spellPower", 3)
-        .object("actor", player)
-        .object("target", target)
-        .build();
+HitInput input = new HitInput(base, power, target, source);
+HitOutput output = HitGraph.run(level.registryAccess(), "fire_hit", input);
 ```

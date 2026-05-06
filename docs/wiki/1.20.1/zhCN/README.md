@@ -1,29 +1,26 @@
 # PiDataGraph 1.20.1
 
-PiDataGraph 现在提供一套小型但完整的数据驱动运行层：用 Codec 读取 JSON，用表达式描述数值，用 action/predicate 描述流程，用 `PiEngineContext` 接入真实游戏代码。
+PiDataGraph 现在提供一套小型但完整的数据驱动运行层：用 Codec 读取 JSON，用表达式描述数值，用 `PiEngineContext` 接入真实游戏代码，并用 runner 统一执行和校验。
 
 ## 入口
 
-- [数据和表达式](data.md)
+- [数据文件](data.md)
 - [执行上下文](context.md)
-- [动作和条件](actions.md)
+- [Action 和 Predicate](actions.md)
+- [注解生成](annotations.md)
 - [数据包注册表和 Runner](registry-runner.md)
 - [基础图执行](core-graph.md)
 - [同步桥接](sync.md)
 
 ## 最短接入链路
 
-1. 用 `PiDoubleExpression`、`PiIntExpression`、`PiBooleanExpression` 写数据模型字段。
-2. 用 `PiDataDefinition` 声明 JSON 文件夹、Codec 和校验。
-3. 用 `PiDataReloadListener` 读取普通 JSON，或用 `PiDataPackRegistries.action(...)` 注册 Minecraft 数据包注册表。
-4. 运行时把事件、实体、物品、方块实体等输入绑定成 `PiEngineContext`。
-5. 执行 action 或已编译内容，然后从 `PiEngineFrame` 读取结果。
+1. 用 `@PiDataGraphModule` 和 `@PiDataPackRegistry` 声明 datapack action registry。
+2. 用 `@PiGraphInput(..., facade = "HitGraph")` 和 `@PiGraphOutput` 声明运行输入和输出。
+3. 编译器会生成 Forge subscriber，自动注册 datapack registry 和 reload verifier。
+4. datagen 用 `HitGraph.dataSet()` 和 `HitGraph.validationContext()` 生成默认 JSON。
+5. 运行时调用 `HitGraph.run(level.registryAccess(), "entry_id", input)` 并读取 output record。
 
 ```java
-PiEngineContext context = PiEngineContext.builder()
-        .number("baseDamage", 6)
-        .number("spellPower", 3)
-        .object("actor", player)
-        .object("target", target)
-        .build();
+HitInput input = new HitInput(base, power, target, source);
+HitOutput output = HitGraph.run(level.registryAccess(), "fire_hit", input);
 ```

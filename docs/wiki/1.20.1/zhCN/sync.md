@@ -24,6 +24,19 @@ PiDataGraphSync.receive(runtime, new ResourceLocation("examplemod", "fire_hit"),
 });
 ```
 
+如果项目已经有统一的 graph facade，同步代码也直接传 facade 暴露的 entry key：
+
+```java
+PiDataGraphState state = new PiDataGraphState(
+        HitGraph.key("fire_hit"),
+        revision,
+        payload);
+
+PiDataGraphSync.receive(runtime, HitGraph.key("fire_hit"), state -> {
+    CompoundTag payload = state.payload;
+});
+```
+
 可用方法：
 
 | 方法 | 作用 |
@@ -33,5 +46,7 @@ PiDataGraphSync.receive(runtime, new ResourceLocation("examplemod", "fire_hit"),
 | `receive(runtime, graphId, consumer)` | 注册指定 graph id 的接收器 |
 | `matcher(graphId)` | 创建 PiNet matcher |
 | `target(graphId)` | 创建 PiNet target |
+
+`receive`、`matcher`、`target` 都可以接 `ResourceLocation` 或 `ResourceKey<?>`。
 
 `PiDataGraphState` 字段为 `graphId`、`revision`、`payload`。`revision` 必须大于等于 0。
