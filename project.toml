@@ -4,7 +4,7 @@ template_version = "1.20.1-template-1.0.0"
 [mod]
 mod_id = "pidatagraph"
 mod_name = "PiDataGraph"
-version = "0.0.5"
+version = "0.0.6"
 version_suffix = "dev"
 group = "com.mihono.pickaid"
 authors = ["PickAID Team"]
