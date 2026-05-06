@@ -5,8 +5,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.pickaid.pidatagraph.data.PiDataBuildContext;
+import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
 import org.pickaid.pidatagraph.engine.context.PiEngineKeyNames;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
 import org.pickaid.pidatagraph.expression.PiExpressionLanguage;
 import org.pickaid.pidatagraph.expression.PiExpressionScope;
 
@@ -45,6 +47,15 @@ public final class PiEngineBuildContext {
         return new PiEngineBuildContext(expressionLanguage, scope, objectTypes);
     }
 
+    public PiEngineBuildContext withNumber(PiEngineNumberKey key) {
+        return builder()
+                .expressionLanguage(expressionLanguage)
+                .expressionScope(expressionScope)
+                .objects(objectTypes)
+                .number(key)
+                .build();
+    }
+
     public PiEngineBuildContext withObject(String name, Class<?> type) {
         return builder()
                 .expressionLanguage(expressionLanguage)
@@ -52,6 +63,11 @@ public final class PiEngineBuildContext {
                 .objects(objectTypes)
                 .object(name, type)
                 .build();
+    }
+
+    public PiEngineBuildContext withObject(PiEngineContextKey<?> key) {
+        Objects.requireNonNull(key, "key");
+        return withObject(key.name(), key.type());
     }
 
     public PiEngineBuildContext withContextContract(PiEngineContextContract contract) {
@@ -114,11 +130,29 @@ public final class PiEngineBuildContext {
             return this;
         }
 
+        public Builder number(PiEngineNumberKey key) {
+            Objects.requireNonNull(key, "key");
+            expressionScope = PiExpressionScope.builder()
+                    .variables(expressionScope.variables())
+                    .variable(key.name())
+                    .build();
+            return this;
+        }
+
         public Builder object(String name, Class<?> type) {
             String checked = checkName(name);
             Class<?> checkedType = Objects.requireNonNull(type, "type");
+            if (checkedType.isPrimitive()) {
+                throw new IllegalArgumentException("engine build context object `" + checked
+                        + "` type must not be primitive: " + checkedType.getName());
+            }
             objectTypes.merge(checked, checkedType, (existing, next) -> mergeObjectType(checked, existing, next));
             return this;
+        }
+
+        public Builder object(PiEngineContextKey<?> key) {
+            Objects.requireNonNull(key, "key");
+            return object(key.name(), key.type());
         }
 
         public Builder objects(Map<String, Class<?>> values) {

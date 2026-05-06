@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mojang.serialization.Codec;
+import java.lang.reflect.Constructor;
 import java.util.List;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 import org.pickaid.pidatagraph.data.PiDataBuildContext;
@@ -26,6 +28,17 @@ class PiEngineRunnerTest {
         assertTrue(context.hasVariable("base"));
         assertTrue(context.hasVariable("power"));
         assertTrue(context.hasObject("target", Target.class));
+    }
+
+    @Test
+    void runnerExposesValidationContextForDatagenAndReloadChecks() {
+        PiEngineRunner<HitInput> runner = PiEngineRunner.actionRegistry(HitBinder.INSTANCE);
+
+        PiDataBuildContext context = runner.validationContext();
+
+        assertTrue(context.hasVariable(HitKeys.BASE));
+        assertTrue(context.hasVariable(HitKeys.POWER));
+        assertTrue(context.hasObject(HitKeys.TARGET));
     }
 
     @Test
@@ -146,12 +159,34 @@ class PiEngineRunnerTest {
     }
 
     @Test
+    void runnerExecutesAnActionFromADataSetResourceKey() throws Exception {
+        PiEngineRunner<HitInput> runner = PiEngineRunner.actionRegistry(HitBinder.INSTANCE);
+
+        PiEngineFrame frame = runner.run(actions(), resourceKey("fire_hit"), new HitInput(3, 2, new Target("dummy")));
+
+        assertEquals(7.0, frame.number("damage"));
+    }
+
+    @Test
     void runnerCanMapFramesIntoDomainResults() {
         PiEngineRunner<HitInput> runner = PiEngineRunner.actionRegistry(HitBinder.INSTANCE);
 
         HitResult result = runner.run(
                 actions(),
                 id("fire_hit"),
+                new HitInput(3, 2, new Target("dummy")),
+                frame -> new HitResult(frame.number("damage")));
+
+        assertEquals(7.0, result.damage());
+    }
+
+    @Test
+    void runnerCanMapFramesFromADataSetResourceKey() throws Exception {
+        PiEngineRunner<HitInput> runner = PiEngineRunner.actionRegistry(HitBinder.INSTANCE);
+
+        HitResult result = runner.run(
+                actions(),
+                resourceKey("fire_hit"),
                 new HitInput(3, 2, new Target("dummy")),
                 frame -> new HitResult(frame.number("damage")));
 
@@ -211,6 +246,17 @@ class PiEngineRunnerTest {
     }
 
     @Test
+    void verifyAllChecksActionContractEvenWhenActionOverridesVerify() {
+        PiEngineRunner<HitInput> runner = PiEngineRunner.actionRegistry(BrokenBinder.INSTANCE);
+
+        PiDataVerificationException error = assertThrows(PiDataVerificationException.class, () ->
+                runner.verifyAll(actionSet("broken", new VerifyOverrideContractAction())));
+
+        assertEquals("example:broken/context.objects.target", error.path());
+        assertEquals("missing engine context object `target` of type " + Target.class.getName(), error.getMessage());
+    }
+
+    @Test
     void defaultActionVerificationReportsNullContractWithPath() {
         NullPointerException error = assertThrows(NullPointerException.class, () ->
                 new NullContractAction().verify(PiDataBuildContext.builder().build(), "spell.root"));
@@ -244,6 +290,12 @@ class PiEngineRunnerTest {
 
     private static ResourceLocation id(String path) {
         return new ResourceLocation("example", path);
+    }
+
+    private static ResourceKey<?> resourceKey(String path) throws Exception {
+        Constructor<ResourceKey> constructor = ResourceKey.class.getDeclaredConstructor(ResourceLocation.class, ResourceLocation.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(id("registry"), id(path));
     }
 
     private enum HitBinder implements PiEngineContextBinder<HitInput> {
@@ -344,6 +396,15 @@ class PiEngineRunnerTest {
     }
 
     private record HitResult(double damage) {
+    }
+
+    private static final class HitKeys {
+        private static final org.pickaid.pidatagraph.engine.context.PiEngineNumberKey BASE =
+                org.pickaid.pidatagraph.engine.context.PiEngineNumberKey.of("base");
+        private static final org.pickaid.pidatagraph.engine.context.PiEngineNumberKey POWER =
+                org.pickaid.pidatagraph.engine.context.PiEngineNumberKey.of("power");
+        private static final org.pickaid.pidatagraph.engine.context.PiEngineContextKey<Target> TARGET =
+                org.pickaid.pidatagraph.engine.context.PiEngineContextKey.of("target", Target.class);
     }
 
     private record BaseOnlyAction() implements PiEngineAction {
@@ -462,6 +523,32 @@ class PiEngineRunnerTest {
         @Override
         public void verify(PiDataBuildContext context, String path) {
             throw new NullPointerException();
+        }
+    }
+
+    private record VerifyOverrideContractAction() implements PiEngineAction {
+        private static final PiEngineActionType<VerifyOverrideContractAction> TYPE = PiEngineActionType.of(
+                id("verify_override_contract"),
+                ignored -> Codec.unit(new VerifyOverrideContractAction())
+        );
+
+        @Override
+        public PiEngineActionType<?> type() {
+            return TYPE;
+        }
+
+        @Override
+        public PiEngineFrame execute(PiEngineContext context) {
+            return PiEngineFrame.empty();
+        }
+
+        @Override
+        public PiEngineContextContract contextContract() {
+            return PiEngineContextContract.builder().object("target", Target.class).build();
+        }
+
+        @Override
+        public void verify(PiDataBuildContext context, String path) {
         }
     }
 

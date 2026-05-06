@@ -48,6 +48,10 @@ public final class PiEngineContextBindings {
         return living(builder, PiEngineContextKeys.LIVING_TARGET.name(), target);
     }
 
+    public static <T extends Entity> PiEngineContext.Builder entity(PiEngineContext.Builder builder, PiEngineContextKey<T> key, T entity) {
+        return entity(builder, Objects.requireNonNull(key, "key").name(), entity);
+    }
+
     public static PiEngineContext.Builder entity(PiEngineContext.Builder builder, String key, Entity entity) {
         Objects.requireNonNull(entity, "entity");
         String checkedKey = checkedKey(key);
@@ -61,6 +65,10 @@ public final class PiEngineContextBindings {
                 .number(checkedKey + "Tick", entity.tickCount)
                 .number(checkedKey + "OnGround", entity.onGround() ? 1.0D : 0.0D);
         return vector(builder, checkedKey + "Delta", entity.getDeltaMovement());
+    }
+
+    public static <T extends LivingEntity> PiEngineContext.Builder living(PiEngineContext.Builder builder, PiEngineContextKey<T> key, T entity) {
+        return living(builder, Objects.requireNonNull(key, "key").name(), entity);
     }
 
     public static PiEngineContext.Builder living(PiEngineContext.Builder builder, String key, LivingEntity entity) {
@@ -85,6 +93,10 @@ public final class PiEngineContextBindings {
         return vector(builder, PiEngineContextKeys.DIRECTION.name(), direction);
     }
 
+    public static PiEngineContext.Builder vector(PiEngineContext.Builder builder, PiEngineContextKey<Vec3> key, Vec3 value) {
+        return vector(builder, Objects.requireNonNull(key, "key").name(), value);
+    }
+
     public static PiEngineContext.Builder vector(PiEngineContext.Builder builder, String key, Vec3 value) {
         Objects.requireNonNull(value, "value");
         String checkedKey = checkedKey(key);
@@ -100,6 +112,10 @@ public final class PiEngineContextBindings {
         return blockPos(builder, PiEngineContextKeys.BLOCK_POS.name(), pos);
     }
 
+    public static PiEngineContext.Builder blockPos(PiEngineContext.Builder builder, PiEngineContextKey<BlockPos> key, BlockPos pos) {
+        return blockPos(builder, Objects.requireNonNull(key, "key").name(), pos);
+    }
+
     public static PiEngineContext.Builder blockPos(PiEngineContext.Builder builder, String key, BlockPos pos) {
         Objects.requireNonNull(pos, "pos");
         String checkedKey = checkedKey(key);
@@ -108,6 +124,10 @@ public final class PiEngineContextBindings {
                 .number(checkedKey + "X", pos.getX())
                 .number(checkedKey + "Y", pos.getY())
                 .number(checkedKey + "Z", pos.getZ());
+    }
+
+    public static PiEngineContext.Builder itemStack(PiEngineContext.Builder builder, PiEngineContextKey<ItemStack> key, ItemStack stack) {
+        return itemStack(builder, Objects.requireNonNull(key, "key").name(), stack);
     }
 
     public static PiEngineContext.Builder itemStack(PiEngineContext.Builder builder, String key, ItemStack stack) {
@@ -125,13 +145,21 @@ public final class PiEngineContextBindings {
     }
 
     public static PiEngineContext.Builder damageSource(PiEngineContext.Builder builder, DamageSource damageSource) {
+        return damageSource(builder, PiEngineContextKeys.DAMAGE_SOURCE, damageSource);
+    }
+
+    public static PiEngineContext.Builder damageSource(PiEngineContext.Builder builder, PiEngineContextKey<DamageSource> key, DamageSource damageSource) {
         return Objects.requireNonNull(builder, "builder")
-                .object(PiEngineContextKeys.DAMAGE_SOURCE, Objects.requireNonNull(damageSource, "damageSource"));
+                .object(Objects.requireNonNull(key, "key"), Objects.requireNonNull(damageSource, "damageSource"));
     }
 
     public static PiEngineContext.Builder hand(PiEngineContext.Builder builder, InteractionHand hand) {
+        return hand(builder, PiEngineContextKeys.HAND, hand);
+    }
+
+    public static PiEngineContext.Builder hand(PiEngineContext.Builder builder, PiEngineContextKey<InteractionHand> key, InteractionHand hand) {
         return Objects.requireNonNull(builder, "builder")
-                .object(PiEngineContextKeys.HAND, Objects.requireNonNull(hand, "hand"));
+                .object(Objects.requireNonNull(key, "key"), Objects.requireNonNull(hand, "hand"));
     }
 
     private static String checkedKey(String key) {

@@ -6,6 +6,7 @@ import java.util.Objects;
 import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.engine.PiEngineContext;
 import org.pickaid.pidatagraph.engine.PiEngineFrame;
+import org.pickaid.pidatagraph.engine.context.PiEngineValueKey;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 
 public final class PiEmitNumberAction implements PiEngineAction {
@@ -15,6 +16,10 @@ public final class PiEmitNumberAction implements PiEngineAction {
     public PiEmitNumberAction(String name, PiDoubleExpression value) {
         this.name = PiEngineActions.checkFrameValueName(Objects.requireNonNull(name, "name"));
         this.value = Objects.requireNonNull(value, "value");
+    }
+
+    public PiEmitNumberAction(PiEngineValueKey<? extends Number> name, PiDoubleExpression value) {
+        this(Objects.requireNonNull(name, "name").name(), value);
     }
 
     static Codec<PiEmitNumberAction> codec(Codec<PiEngineAction> actionCodec) {

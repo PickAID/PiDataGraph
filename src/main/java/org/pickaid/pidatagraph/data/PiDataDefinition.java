@@ -67,7 +67,22 @@ public final class PiDataDefinition<T> {
         if (checked.startsWith("/") || checked.endsWith("/") || checked.contains("..")) {
             throw new IllegalArgumentException("invalid data folder: " + folder);
         }
+        if (!isValidFolderPath(checked)) {
+            throw new IllegalArgumentException("invalid data folder: " + folder);
+        }
         return checked;
+    }
+
+    private static boolean isValidFolderPath(String folder) {
+        for (int index = 0; index < folder.length(); index++) {
+            char next = folder.charAt(index);
+            if (!(next >= 'a' && next <= 'z')
+                    && !(next >= '0' && next <= '9')
+                    && next != '_' && next != '-' && next != '.' && next != '/') {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static final class Builder<T> {

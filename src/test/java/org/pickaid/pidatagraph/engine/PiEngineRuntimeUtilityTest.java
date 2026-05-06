@@ -9,8 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
+import java.lang.reflect.Constructor;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -129,6 +131,7 @@ class PiEngineRuntimeUtilityTest {
         assertTrue(frame.flag(HUD_READY));
         assertFalse(frame.flag(dottedFlag));
         assertSame(impact, frame.object(HIT_IMPACT).orElseThrow());
+        assertSame(impact, frame.value(HIT_IMPACT));
     }
 
     @Test
@@ -170,6 +173,7 @@ class PiEngineRuntimeUtilityTest {
 
         assertTrue(frame.hasValue(IMPACT));
         assertSame(impact, frame.object(IMPACT).orElseThrow());
+        assertSame(impact, frame.value(IMPACT));
     }
 
     @Test
@@ -194,6 +198,25 @@ class PiEngineRuntimeUtilityTest {
     }
 
     @Test
+    void minecraftContextBindingsAcceptTypedKeysFromGeneratedGlue() {
+        PiEngineContextKey<Vec3> impact = PiEngineContextKey.of("impact", Vec3.class);
+        PiEngineContextKey<BlockPos> hitBlock = PiEngineContextKey.of("hitBlock", BlockPos.class);
+        Vec3 impactPos = new Vec3(3, 4, 0);
+        BlockPos blockPos = new BlockPos(7, 8, 9);
+
+        PiEngineContext context = PiEngineContextBindings.blockPos(
+                PiEngineContextBindings.vector(PiEngineContext.builder(), impact, impactPos),
+                hitBlock,
+                blockPos
+        ).build();
+
+        assertSame(impactPos, context.requireObject(impact));
+        assertSame(blockPos, context.requireObject(hitBlock));
+        assertEquals(5.0D, context.number("impactLength"), 0.0001D);
+        assertEquals(7.0D, context.number("hitBlockX"), 0.0001D);
+    }
+
+    @Test
     void contextStringReadsUseTheSameNameRulesAsContextBuilders() {
         Vec3 actor = new Vec3(1, 0, 0);
 
@@ -213,6 +236,20 @@ class PiEngineRuntimeUtilityTest {
     }
 
     @Test
+    void contextCanRequireTypedObjectsWithClearMissingMessages() {
+        Vec3 impact = new Vec3(1, 2, 3);
+        PiEngineContext context = PiEngineContext.builder()
+                .object(IMPACT, impact)
+                .build();
+
+        assertSame(impact, context.requireObject(IMPACT));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                context.requireObject("missingImpact", Vec3.class));
+        assertEquals("missing engine context object `missingImpact` of type " + Vec3.class.getName(), error.getMessage());
+    }
+
+    @Test
     void emitActionsCanWriteDottedFrameOutputPaths() {
         Vec3 impact = new Vec3(1, 2, 3);
         PiEngineContext context = PiEngineContext.builder()
@@ -221,18 +258,18 @@ class PiEngineRuntimeUtilityTest {
                 .build();
 
         assertEquals(12.0D, context.execute(new PiEmitNumberAction(
-                "hud.mana_fill",
+                HUD_MANA_FILL,
                 PiDoubleExpression.of("baseDamage * 2")
         )).number(HUD_MANA_FILL), 0.0001D);
 
         assertTrue(context.execute(new PiEmitFlagAction(
-                "hud.ready",
+                HUD_READY,
                 new PiHasNumberPredicate("baseDamage")
         )).flag(HUD_READY));
 
         assertSame(impact, context.execute(new PiEmitObjectAction(
-                "hit.impact",
-                "impact"
+                HIT_IMPACT,
+                IMPACT
         )).object(HIT_IMPACT).orElseThrow());
     }
 
@@ -289,7 +326,7 @@ class PiEngineRuntimeUtilityTest {
     }
 
     @Test
-    void actionDataHelperBuildsVerifiedDataDefinitionsForActionChains() {
+    void actionDataHelperBuildsVerifiedDataDefinitionsForActionChains() throws Exception {
         PiDataDefinition<PiEngineAction> definition = PiEngineActionData.definition(
                 id("actions"),
                 "engine/action",
@@ -311,13 +348,27 @@ class PiEngineRuntimeUtilityTest {
                 PiEngineBuildContext.standard(),
                 PiEngineActionData.contentType(definition, PiExpressionScope.of("baseDamage", "power"))
         );
-        PiEngineFrame frame = library.require(new ResourceLocation("examplemod", "fire_hit"))
+        ResourceKey<?> key = resourceKey("examplemod", "fire_hit");
+        PiEngineFrame frame = library.require(key)
                 .execute(PiEngineContext.builder()
                         .number("baseDamage", 6)
                         .number("power", 3)
                         .build());
 
         assertEquals(9.0D, frame.number("damage"), 0.0001D);
+    }
+
+    @Test
+    void engineLibraryBuilderAcceptsGeneratedResourceKeys() throws Exception {
+        ResourceKey<?> fireHit = resourceKey("examplemod", "fire_hit");
+        PiEngineAction action = new PiEmitNumberAction("damage", PiDoubleExpression.of("baseDamage + power"));
+
+        PiEngineLibrary<PiEngineAction> library = PiEngineLibrary.<PiEngineAction>builder()
+                .entry(fireHit, action)
+                .build();
+
+        assertSame(action, library.require(fireHit));
+        assertSame(action, library.get(fireHit).orElseThrow());
     }
 
     @Test
@@ -342,5 +393,11 @@ class PiEngineRuntimeUtilityTest {
 
     private static ResourceLocation id(String path) {
         return new ResourceLocation("test", path);
+    }
+
+    private static ResourceKey<?> resourceKey(String namespace, String path) throws Exception {
+        Constructor<ResourceKey> constructor = ResourceKey.class.getDeclaredConstructor(ResourceLocation.class, ResourceLocation.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(id("registry"), new ResourceLocation(namespace, path));
     }
 }

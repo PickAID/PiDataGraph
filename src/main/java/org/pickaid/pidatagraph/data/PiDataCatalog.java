@@ -32,7 +32,7 @@ public final class PiDataCatalog<T> {
 
         private Builder(PiDataDefinition<T> definition, String namespace) {
             this.definition = Objects.requireNonNull(definition, "definition");
-            this.namespace = Objects.requireNonNull(namespace, "namespace");
+            this.namespace = PiDataSet.Builder.checkNamespace(namespace);
         }
 
         public Builder<T> add(PiDataGenEntry<T> entry) {

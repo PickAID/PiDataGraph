@@ -5,6 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
 import org.pickaid.pidatagraph.expression.PiExpressionLanguage;
 import org.pickaid.pidatagraph.expression.PiExpressionScope;
 
@@ -39,8 +41,17 @@ public final class PiDataBuildContext {
         return expressionScope.variables().contains(checkName(variable));
     }
 
+    public boolean hasVariable(PiEngineNumberKey variable) {
+        return hasVariable(Objects.requireNonNull(variable, "variable").name());
+    }
+
     public boolean hasObject(String name) {
         return objectTypes.containsKey(checkName(name));
+    }
+
+    public boolean hasObject(PiEngineContextKey<?> key) {
+        Objects.requireNonNull(key, "key");
+        return hasObject(key.name(), key.type());
     }
 
     public boolean hasObject(String name, Class<?> requiredType) {
@@ -55,6 +66,10 @@ public final class PiDataBuildContext {
         return Optional.ofNullable(objectTypes.get(checkName(name)));
     }
 
+    public Optional<Class<?>> objectType(PiEngineContextKey<?> key) {
+        return objectType(Objects.requireNonNull(key, "key").name());
+    }
+
     public PiDataBuildContext withVariable(String variable) {
         return builder()
                 .expressionLanguage(expressionLanguage)
@@ -66,6 +81,10 @@ public final class PiDataBuildContext {
                 .build();
     }
 
+    public PiDataBuildContext withVariable(PiEngineNumberKey variable) {
+        return withVariable(Objects.requireNonNull(variable, "variable").name());
+    }
+
     public PiDataBuildContext withObject(String name, Class<?> type) {
         return builder()
                 .expressionLanguage(expressionLanguage)
@@ -73,6 +92,11 @@ public final class PiDataBuildContext {
                 .objects(objectTypes)
                 .object(name, type)
                 .build();
+    }
+
+    public PiDataBuildContext withObject(PiEngineContextKey<?> key) {
+        Objects.requireNonNull(key, "key");
+        return withObject(key.name(), key.type());
     }
 
     private static String checkName(String name) {
@@ -119,8 +143,26 @@ public final class PiDataBuildContext {
         public Builder object(String name, Class<?> type) {
             String checked = checkName(name);
             Class<?> checkedType = Objects.requireNonNull(type, "type");
+            if (checkedType.isPrimitive()) {
+                throw new IllegalArgumentException("data build context object `" + checked
+                        + "` type must not be primitive: " + checkedType.getName());
+            }
             objectTypes.merge(checked, checkedType, (existing, next) -> mergeObjectType(checked, existing, next));
             return this;
+        }
+
+        public Builder number(PiEngineNumberKey key) {
+            Objects.requireNonNull(key, "key");
+            expressionScope = PiExpressionScope.builder()
+                    .variables(expressionScope.variables())
+                    .variable(key.name())
+                    .build();
+            return this;
+        }
+
+        public Builder object(PiEngineContextKey<?> key) {
+            Objects.requireNonNull(key, "key");
+            return object(key.name(), key.type());
         }
 
         public Builder objects(Map<String, Class<?>> values) {

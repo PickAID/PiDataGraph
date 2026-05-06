@@ -42,6 +42,10 @@ public final class PiEngineContextContract {
         return Optional.ofNullable(objects.get(checkName(name)));
     }
 
+    public Optional<Class<?>> objectType(PiEngineContextKey<?> key) {
+        return objectType(Objects.requireNonNull(key, "key").name());
+    }
+
     public PiEngineContextContract merge(PiEngineContextContract other) {
         Objects.requireNonNull(other, "other");
         if (numbers.isEmpty() && objects.isEmpty()) {
@@ -73,6 +77,10 @@ public final class PiEngineContextContract {
 
     public PiEngineContextContract withoutObject(String object) {
         return withoutObjects(Set.of(object));
+    }
+
+    public PiEngineContextContract withoutObject(PiEngineContextKey<?> object) {
+        return withoutObject(Objects.requireNonNull(object, "object").name());
     }
 
     public PiEngineContextContract withoutObjects(Collection<String> providedObjects) {
@@ -178,6 +186,10 @@ public final class PiEngineContextContract {
         public Builder object(String name, Class<?> type) {
             String checked = checkName(name);
             Class<?> checkedType = Objects.requireNonNull(type, "type");
+            if (checkedType.isPrimitive()) {
+                throw new IllegalArgumentException("engine context object `" + checked
+                        + "` type must not be primitive: " + checkedType.getName());
+            }
             objects.merge(checked, checkedType, (existing, next) -> mergeObjectType(checked, existing, next));
             return this;
         }

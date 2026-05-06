@@ -7,16 +7,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 
 public final class PiDataSet<T> {
     private final PiDataDefinition<T> definition;
     private final List<PiDataEntry<T>> entries;
+    private final Map<ResourceLocation, T> valuesById;
 
     private PiDataSet(PiDataDefinition<T> definition, List<PiDataEntry<T>> entries) {
         this.definition = Objects.requireNonNull(definition, "definition");
         this.entries = List.copyOf(entries);
+        LinkedHashMap<ResourceLocation, T> values = new LinkedHashMap<>();
+        for (PiDataEntry<T> entry : entries) {
+            values.put(entry.id(), entry.value());
+        }
+        this.valuesById = Map.copyOf(values);
     }
 
     public static <T> Builder<T> builder(PiDataDefinition<T> definition, String namespace) {
@@ -29,6 +36,14 @@ public final class PiDataSet<T> {
 
     public List<PiDataEntry<T>> entries() {
         return entries;
+    }
+
+    public Optional<T> value(ResourceLocation id) {
+        return Optional.ofNullable(valuesById.get(Objects.requireNonNull(id, "id")));
+    }
+
+    public Optional<T> value(ResourceKey<?> key) {
+        return value(Objects.requireNonNull(key, "key").location());
     }
 
     public PiDataValidation verify(PiDataBuildContext context) {
@@ -68,11 +83,13 @@ public final class PiDataSet<T> {
         }
 
         public Builder<T> entry(String path, T value) {
-            return entry(new ResourceLocation(namespace, path), value);
+            return entry(new ResourceLocation(namespace, checkEntryPath(path)), value);
         }
 
         public Builder<T> entry(ResourceLocation id, T value) {
-            PiDataEntry<T> entry = new PiDataEntry<>(id, value);
+            ResourceLocation checkedId = Objects.requireNonNull(id, "id");
+            checkEntryPath(checkedId.getPath());
+            PiDataEntry<T> entry = new PiDataEntry<>(checkedId, value);
             if (entries.putIfAbsent(entry.id(), entry) != null) {
                 throw new IllegalArgumentException("duplicate data entry: " + entry.id());
             }
@@ -87,12 +104,50 @@ public final class PiDataSet<T> {
             return new PiDataSet<>(definition, new ArrayList<>(entries.values()));
         }
 
-        private static String checkNamespace(String namespace) {
+        static String checkNamespace(String namespace) {
             String checked = Objects.requireNonNull(namespace, "namespace").trim();
             if (checked.isEmpty()) {
                 throw new IllegalArgumentException("namespace must not be blank");
             }
+            if (!isValidNamespace(checked)) {
+                throw new IllegalArgumentException("invalid namespace: " + namespace);
+            }
             return checked;
+        }
+
+        private static String checkEntryPath(String path) {
+            String checked = Objects.requireNonNull(path, "path").trim();
+            if (checked.isEmpty()) {
+                throw new IllegalArgumentException("data entry path must not be blank");
+            }
+            if (checked.startsWith("/") || checked.endsWith("/") || checked.contains("..") || !isValidPath(checked)) {
+                throw new IllegalArgumentException("invalid data entry path: " + path);
+            }
+            return checked;
+        }
+
+        private static boolean isValidNamespace(String namespace) {
+            for (int index = 0; index < namespace.length(); index++) {
+                char next = namespace.charAt(index);
+                if (!(next >= 'a' && next <= 'z')
+                        && !(next >= '0' && next <= '9')
+                        && next != '_' && next != '-' && next != '.') {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean isValidPath(String path) {
+            for (int index = 0; index < path.length(); index++) {
+                char next = path.charAt(index);
+                if (!(next >= 'a' && next <= 'z')
+                        && !(next >= '0' && next <= '9')
+                        && next != '_' && next != '-' && next != '.' && next != '/') {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }

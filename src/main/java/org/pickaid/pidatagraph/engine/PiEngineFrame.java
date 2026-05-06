@@ -164,6 +164,16 @@ public final class PiEngineFrame {
         return type.cast(value);
     }
 
+    public <T> T value(PiEngineValueKey<T> key) {
+        Objects.requireNonNull(key, "key");
+        return value(key.name(), key.type());
+    }
+
+    public <T> T value(PiEngineContextKey<T> key) {
+        Objects.requireNonNull(key, "key");
+        return value(key.name(), key.type());
+    }
+
     public Map<String, Object> values() {
         return values;
     }

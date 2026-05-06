@@ -2,6 +2,7 @@ package org.pickaid.pidatagraph.data;
 
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -50,11 +51,23 @@ public final class PiDataProvider implements DataProvider {
                 }
             }
         });
+        List<PiDataJsonFile> files = generatedFiles();
         Path root = output.getOutputFolder();
-        return CompletableFuture.allOf(sets.stream()
-                .flatMap(set -> set.encode().stream())
+        return CompletableFuture.allOf(files.stream()
                 .map(file -> DataProvider.saveStable(cachedOutput, file.json(), root.resolve(file.path())))
                 .toArray(CompletableFuture[]::new));
+    }
+
+    private List<PiDataJsonFile> generatedFiles() {
+        LinkedHashSet<String> paths = new LinkedHashSet<>();
+        return sets.stream()
+                .flatMap(set -> set.encode().stream())
+                .peek(file -> {
+                    if (!paths.add(file.path())) {
+                        throw new IllegalStateException("duplicate generated data file: " + file.path());
+                    }
+                })
+                .toList();
     }
 
     @Override

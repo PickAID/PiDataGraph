@@ -43,6 +43,26 @@ public final class PiEnginePredicates {
             id("number_range"),
             ignored -> PiNumberRangePredicate.CODEC
     );
+    public static final PiEnginePredicateType<PiObjectEqualsPredicate> OBJECT_EQUALS = PiEnginePredicateType.of(
+            id("object_equals"),
+            ignored -> PiObjectEqualsPredicate.CODEC
+    );
+    public static final PiEnginePredicateType<PiEntityTypePredicate> ENTITY_TYPE = PiEnginePredicateType.of(
+            id("entity_type"),
+            ignored -> PiEntityTypePredicate.CODEC
+    );
+    public static final PiEnginePredicateType<PiLevelDimensionPredicate> LEVEL_DIMENSION = PiEnginePredicateType.of(
+            id("level_dimension"),
+            ignored -> PiLevelDimensionPredicate.CODEC
+    );
+    public static final PiEnginePredicateType<PiBlockStatePredicate> BLOCK_STATE = PiEnginePredicateType.of(
+            id("block_state"),
+            ignored -> PiBlockStatePredicate.CODEC
+    );
+    public static final PiEnginePredicateType<PiBiomePredicate> BIOME = PiEnginePredicateType.of(
+            id("biome"),
+            ignored -> PiBiomePredicate.CODEC
+    );
     public static final PiEnginePredicateType<PiItemEnchantmentPredicate> ITEM_ENCHANTMENT = PiEnginePredicateType.of(
             id("item_enchantment"),
             ignored -> PiItemEnchantmentPredicate.CODEC
@@ -56,7 +76,9 @@ public final class PiEnginePredicates {
     }
 
     public static List<PiEnginePredicateType<? extends PiEnginePredicate>> core() {
-        return List.of(EXPRESSION, ALL, ANY, NOT, CHANCE, HAS_OBJECT, HAS_NUMBER, NUMBER_RANGE, ITEM_ENCHANTMENT, ITEM_STACK);
+        return List.of(
+                EXPRESSION, ALL, ANY, NOT, CHANCE, HAS_OBJECT, HAS_NUMBER, NUMBER_RANGE, OBJECT_EQUALS,
+                ENTITY_TYPE, LEVEL_DIMENSION, BLOCK_STATE, BIOME, ITEM_ENCHANTMENT, ITEM_STACK);
     }
 
     public static Codec<PiEnginePredicate> standardCodec() {

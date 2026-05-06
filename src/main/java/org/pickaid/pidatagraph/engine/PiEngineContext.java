@@ -117,6 +117,10 @@ public final class PiEngineContext {
     public PiEngineFrame execute(PiEngineAction action) {
         PiEngineAction checked = Objects.requireNonNull(action, "action");
         PiEngineActionType<?> type = Objects.requireNonNull(checked.type(), "action returned null type");
+        PiEngineContextContract contract = Objects.requireNonNull(
+                checked.contextContract(),
+                "action " + type.id() + " returned null context contract");
+        verifyContract(contract, "action " + type.id());
         return Objects.requireNonNull(checked.execute(this), "action " + type.id() + " returned null frame");
     }
 
@@ -156,19 +160,39 @@ public final class PiEngineContext {
 
     public <T> Optional<T> object(String key, Class<T> type) {
         String checkedKey = checkObjectKey(key);
+        Class<T> checkedType = Objects.requireNonNull(type, "type");
         Object value = objects.get(checkedKey);
         if (value == null) {
             return Optional.empty();
         }
-        if (!type.isInstance(value)) {
-            throw new ClassCastException("engine context object `" + checkedKey + "` is " + value.getClass().getName() + ", not " + type.getName());
+        if (!checkedType.isInstance(value)) {
+            throw objectTypeError(checkedKey, value, checkedType);
         }
-        return Optional.of(type.cast(value));
+        return Optional.of(checkedType.cast(value));
     }
 
     public <T> Optional<T> object(PiEngineContextKey<T> key) {
         Objects.requireNonNull(key, "key");
         return object(key.name(), key.type());
+    }
+
+    public <T> T requireObject(String key, Class<T> type) {
+        String checkedKey = checkObjectKey(key);
+        Class<T> checkedType = Objects.requireNonNull(type, "type");
+        Object value = objects.get(checkedKey);
+        if (value == null) {
+            throw new IllegalArgumentException("missing engine context object `" + checkedKey
+                    + "` of type " + checkedType.getName());
+        }
+        if (!checkedType.isInstance(value)) {
+            throw objectTypeError(checkedKey, value, checkedType);
+        }
+        return checkedType.cast(value);
+    }
+
+    public <T> T requireObject(PiEngineContextKey<T> key) {
+        Objects.requireNonNull(key, "key");
+        return requireObject(key.name(), key.type());
     }
 
     public <T> boolean hasObject(PiEngineContextKey<T> key) {
@@ -180,6 +204,11 @@ public final class PiEngineContext {
             issues.append("; ");
         }
         issues.append(issue);
+    }
+
+    private static ClassCastException objectTypeError(String key, Object value, Class<?> type) {
+        return new ClassCastException("engine context object `" + key + "` is "
+                + value.getClass().getName() + ", not " + type.getName());
     }
 
     public static final class Builder {

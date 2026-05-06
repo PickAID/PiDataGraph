@@ -16,6 +16,14 @@ public final class PiEngineActions {
             id("sequence"),
             PiSequenceAction::codec
     );
+    public static final PiEngineActionType<PiNoopAction> NOOP = PiEngineActionType.of(
+            id("noop"),
+            ignored -> PiNoopAction.CODEC
+    );
+    public static final PiEngineActionType<PiFailAction> FAIL = PiEngineActionType.of(
+            id("fail"),
+            ignored -> PiFailAction.CODEC
+    );
     public static final PiEngineActionType<PiIfAction> IF = PiEngineActionType.of(
             id("if"),
             PiIfAction::codec
@@ -44,6 +52,10 @@ public final class PiEngineActions {
             id("emit_number"),
             PiEmitNumberAction::codec
     );
+    public static final PiEngineActionType<PiEmitRandomNumberAction> EMIT_RANDOM_NUMBER = PiEngineActionType.of(
+            id("emit_random_number"),
+            ignored -> PiEmitRandomNumberAction.CODEC
+    );
     public static final PiEngineActionType<PiEmitFlagAction> EMIT_FLAG = PiEngineActionType.of(
             id("emit_flag"),
             PiEmitFlagAction::codec
@@ -52,12 +64,18 @@ public final class PiEngineActions {
             id("emit_object"),
             PiEmitObjectAction::codec
     );
+    public static final PiEngineActionType<PiSelectObjectAction> SELECT_OBJECT = PiEngineActionType.of(
+            id("select_object"),
+            ignored -> PiSelectObjectAction.CODEC
+    );
 
     private PiEngineActions() {
     }
 
     public static List<PiEngineActionType<? extends PiEngineAction>> core() {
-        return List.of(SEQUENCE, IF, REPEAT, WITH_NUMBER, WITH_CONTEXT, GUARD, FOR_EACH_OBJECT, EMIT_NUMBER, EMIT_FLAG, EMIT_OBJECT);
+        return List.of(
+                SEQUENCE, NOOP, FAIL, IF, REPEAT, WITH_NUMBER, WITH_CONTEXT, GUARD, FOR_EACH_OBJECT,
+                EMIT_NUMBER, EMIT_RANDOM_NUMBER, EMIT_FLAG, EMIT_OBJECT, SELECT_OBJECT);
     }
 
     public static void verify(String path, PiDataBuildContext context, PiDoubleExpression expression) {

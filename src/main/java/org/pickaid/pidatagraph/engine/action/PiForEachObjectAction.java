@@ -7,19 +7,44 @@ import java.util.Objects;
 import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.engine.PiEngineContext;
 import org.pickaid.pidatagraph.engine.PiEngineFrame;
+import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
 
 public final class PiForEachObjectAction implements PiEngineAction {
     private final String list;
     private final String item;
     private final String index;
+    private final Class<?> itemType;
     private final PiEngineAction child;
 
     public PiForEachObjectAction(String list, String item, String index, PiEngineAction child) {
+        this(list, item, index, Object.class, child);
+    }
+
+    private PiForEachObjectAction(String list, String item, String index, Class<?> itemType, PiEngineAction child) {
         this.list = PiEngineActions.checkVariableName(Objects.requireNonNull(list, "list"));
         this.item = PiEngineActions.checkVariableName(Objects.requireNonNull(item, "item"));
         this.index = index == null || index.isBlank() ? "" : PiEngineActions.checkVariableName(index);
+        this.itemType = Objects.requireNonNull(itemType, "itemType");
+        if (itemType.isPrimitive()) {
+            throw new IllegalArgumentException("engine context object `" + this.item
+                    + "` type must not be primitive: " + itemType.getName());
+        }
         this.child = Objects.requireNonNull(child, "child");
+    }
+
+    public PiForEachObjectAction(PiEngineContextKey<?> list, PiEngineContextKey<?> item, PiEngineAction child) {
+        this(list, item, null, child);
+    }
+
+    public PiForEachObjectAction(PiEngineContextKey<?> list, PiEngineContextKey<?> item, PiEngineNumberKey index, PiEngineAction child) {
+        this(
+                Objects.requireNonNull(list, "list").name(),
+                Objects.requireNonNull(item, "item").name(),
+                index == null ? "" : index.name(),
+                Objects.requireNonNull(item, "item").type(),
+                child);
     }
 
     static Codec<PiForEachObjectAction> codec(Codec<PiEngineAction> actionCodec) {
@@ -54,15 +79,18 @@ public final class PiForEachObjectAction implements PiEngineAction {
 
     @Override
     public PiEngineFrame execute(PiEngineContext context) {
-        Object raw = context.object(list).orElseThrow(() -> new IllegalArgumentException(
-                "missing engine context object list: " + list
-        ));
-        if (!(raw instanceof Iterable<?> iterable)) {
-            throw new ClassCastException("engine context object `" + list + "` is " + raw.getClass().getName() + ", not java.lang.Iterable");
-        }
+        Iterable<?> iterable = context.requireObject(list, Iterable.class);
         PiEngineFrame frame = PiEngineFrame.empty();
         int i = 0;
         for (Object value : iterable) {
+            if (value == null) {
+                throw new IllegalArgumentException("engine context object list `" + list
+                        + "` contains null for `" + item + "` at index " + i);
+            }
+            if (itemType != Object.class && !itemType.isInstance(value)) {
+                throw new ClassCastException("engine context object list `" + list + "` item `" + item
+                        + "` at index " + i + " is " + value.getClass().getName() + ", not " + itemType.getName());
+            }
             PiEngineContext.Builder builder = context.derive().object(item, value);
             if (!index.isEmpty()) {
                 builder.number(index, i);
@@ -88,7 +116,7 @@ public final class PiForEachObjectAction implements PiEngineAction {
     @Override
     public void verify(PiDataBuildContext context, String path) {
         PiEngineActions.verifyObject(path + ".list", context, list, Iterable.class);
-        PiDataBuildContext childContext = context.withObject(item, Object.class);
+        PiDataBuildContext childContext = context.withObject(item, itemType);
         if (!index.isEmpty()) {
             childContext = childContext.withVariable(index);
         }

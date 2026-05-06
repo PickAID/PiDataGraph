@@ -8,6 +8,7 @@ import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.engine.PiEngineContext;
 import org.pickaid.pidatagraph.engine.action.PiEngineActions;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 
 public final class PiNumberRangePredicate implements PiEnginePredicate {
@@ -25,6 +26,10 @@ public final class PiNumberRangePredicate implements PiEnginePredicate {
         this.key = PiEngineActions.checkVariableName(Objects.requireNonNull(key, "key"));
         this.min = Objects.requireNonNull(min, "min");
         this.max = Objects.requireNonNull(max, "max");
+    }
+
+    public PiNumberRangePredicate(PiEngineNumberKey key, Optional<PiDoubleExpression> min, Optional<PiDoubleExpression> max) {
+        this(Objects.requireNonNull(key, "key").name(), min, max);
     }
 
     public String key() {

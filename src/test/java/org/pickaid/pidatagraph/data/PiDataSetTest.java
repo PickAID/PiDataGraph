@@ -7,8 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.lang.reflect.Constructor;
 import java.nio.file.Files;
 import java.util.List;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.PackOutput;
@@ -63,6 +65,55 @@ class PiDataSetTest {
                 builder.entry("fireball", new SpellSpec(PiDoubleExpression.of("2"), PiIntExpression.of("10"))));
 
         assertEquals("duplicate data entry: examplemod:fireball", error.getMessage());
+    }
+
+    @Test
+    void dataSetCanLookupGeneratedValuesById() throws Exception {
+        SpellSpec fireball = new SpellSpec(PiDoubleExpression.of("1"), PiIntExpression.of("20"));
+        PiDataSet<SpellSpec> set = PiDataSet.builder(spellDefinition(), "examplemod")
+                .entry("fireball", fireball)
+                .build();
+        ResourceKey<?> key = resourceKey("examplemod", "fireball");
+
+        assertEquals(fireball, set.value(new ResourceLocation("examplemod", "fireball")).orElseThrow());
+        assertEquals(fireball, set.value(key).orElseThrow());
+        assertTrue(set.value(new ResourceLocation("examplemod", "missing")).isEmpty());
+    }
+
+    @Test
+    void rejectsInvalidGeneratedNamespaceBeforeEntriesAreAdded() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                PiDataSet.builder(spellDefinition(), "Example Mod"));
+
+        assertEquals("invalid namespace: Example Mod", error.getMessage());
+    }
+
+    @Test
+    void catalogRejectsInvalidGeneratedNamespaceBeforeEntriesAreAdded() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                PiDataCatalog.builder(spellDefinition(), "Example Mod"));
+
+        assertEquals("invalid namespace: Example Mod", error.getMessage());
+    }
+
+    @Test
+    void rejectsUnsafeGeneratedEntryPathsBeforeFilesAreGenerated() {
+        PiDataSet.Builder<SpellSpec> builder = PiDataSet.builder(spellDefinition(), "examplemod");
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                builder.entry("../escape", new SpellSpec(PiDoubleExpression.of("1"), PiIntExpression.of("20"))));
+
+        assertEquals("invalid data entry path: ../escape", error.getMessage());
+    }
+
+    @Test
+    void rejectsUnsafeResourceLocationEntryPathsBeforeFilesAreGenerated() {
+        PiDataSet.Builder<SpellSpec> builder = PiDataSet.builder(spellDefinition(), "examplemod");
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                builder.entry(new ResourceLocation("examplemod", "spell/"), new SpellSpec(PiDoubleExpression.of("1"), PiIntExpression.of("20"))));
+
+        assertEquals("invalid data entry path: spell/", error.getMessage());
     }
 
     @Test
@@ -121,6 +172,14 @@ class PiDataSetTest {
     }
 
     @Test
+    void definitionRejectsInvalidDataFoldersBeforeFilesAreGenerated() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                PiDataDefinition.builder(id("spell"), "Spell Data", SpellSpec.CODEC));
+
+        assertEquals("invalid data folder: Spell Data", error.getMessage());
+    }
+
+    @Test
     void dataSetVerificationIncludesEntryIdInIssuePath() {
         PiDataSet<SpellSpec> set = PiDataSet.builder(spellDefinition(), "examplemod")
                 .entry("fireball", new SpellSpec(PiDoubleExpression.of("base + missing"), PiIntExpression.of("20")))
@@ -165,6 +224,35 @@ class PiDataSetTest {
                 error.getMessage());
     }
 
+    @Test
+    void providerRejectsDuplicateGeneratedFilePathsBeforeWriting() {
+        PiDataSet<SpellSpec> first = PiDataSet.builder(spellDefinition(), "examplemod")
+                .entry("fireball", new SpellSpec(PiDoubleExpression.of("1"), PiIntExpression.of("20")))
+                .build();
+        PiDataSet<SpellSpec> second = PiDataSet.builder(spellDefinition(), "examplemod")
+                .entry("fireball", new SpellSpec(PiDoubleExpression.of("2"), PiIntExpression.of("10")))
+                .build();
+        PiDataProvider provider = new PiDataProvider(new PackOutput(tempDir), "Example Spell Data", first, second);
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () ->
+                provider.run(CachedOutput.NO_CACHE));
+
+        assertEquals("duplicate generated data file: data/examplemod/spell/fireball.json", error.getMessage());
+    }
+
+    @Test
+    void dataJsonFileRejectsUnsafeRelativePaths() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                new PiDataJsonFile("../escape.json", new JsonObject()));
+
+        assertEquals("invalid generated data file path: ../escape.json", error.getMessage());
+
+        error = assertThrows(IllegalArgumentException.class, () ->
+                new PiDataJsonFile("data/example mod/spell/fireball.json", new JsonObject()));
+
+        assertEquals("invalid generated data file path: data/example mod/spell/fireball.json", error.getMessage());
+    }
+
     private static PiDataDefinition<SpellSpec> spellDefinition() {
         return PiDataDefinition.<SpellSpec>builder(id("spell"), "spell", SpellSpec.CODEC)
                 .verify("damage", (context, spec) -> spec.damage().compile(context.expressionLanguage(), context.expressionScope()))
@@ -174,6 +262,12 @@ class PiDataSetTest {
 
     private static ResourceLocation id(String path) {
         return new ResourceLocation("test", path);
+    }
+
+    private static ResourceKey<?> resourceKey(String namespace, String path) throws Exception {
+        Constructor<ResourceKey> constructor = ResourceKey.class.getDeclaredConstructor(ResourceLocation.class, ResourceLocation.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(id("registry"), new ResourceLocation(namespace, path));
     }
 
     private static final class FireSpellEntries implements PiDataGenEntry<SpellSpec> {

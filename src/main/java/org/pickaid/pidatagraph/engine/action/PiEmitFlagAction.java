@@ -7,6 +7,7 @@ import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.engine.PiEngineContext;
 import org.pickaid.pidatagraph.engine.PiEngineFrame;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineValueKey;
 import org.pickaid.pidatagraph.engine.predicate.PiEnginePredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiEnginePredicates;
 
@@ -17,6 +18,10 @@ public final class PiEmitFlagAction implements PiEngineAction {
     public PiEmitFlagAction(String name, PiEnginePredicate predicate) {
         this.name = PiEngineActions.checkFrameValueName(Objects.requireNonNull(name, "name"));
         this.predicate = Objects.requireNonNull(predicate, "predicate");
+    }
+
+    public PiEmitFlagAction(PiEngineValueKey<Boolean> name, PiEnginePredicate predicate) {
+        this(Objects.requireNonNull(name, "name").name(), predicate);
     }
 
     static Codec<PiEmitFlagAction> codec(Codec<PiEngineAction> actionCodec, Codec<PiEnginePredicate> predicateCodec) {

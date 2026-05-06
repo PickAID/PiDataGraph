@@ -22,27 +22,58 @@ import org.pickaid.pidatagraph.engine.action.PiEngineActions;
 import org.pickaid.pidatagraph.engine.action.PiEmitFlagAction;
 import org.pickaid.pidatagraph.engine.action.PiEmitNumberAction;
 import org.pickaid.pidatagraph.engine.action.PiEmitObjectAction;
+import org.pickaid.pidatagraph.engine.action.PiEmitRandomNumberAction;
+import org.pickaid.pidatagraph.engine.action.PiFailAction;
 import org.pickaid.pidatagraph.engine.action.PiForEachObjectAction;
 import org.pickaid.pidatagraph.engine.action.PiGuardAction;
+import org.pickaid.pidatagraph.engine.action.PiNoopAction;
+import org.pickaid.pidatagraph.engine.action.PiSelectObjectAction;
 import org.pickaid.pidatagraph.engine.action.PiSequenceAction;
 import org.pickaid.pidatagraph.engine.action.PiWithContextAction;
+import org.pickaid.pidatagraph.engine.action.PiWithNumberAction;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
+import org.pickaid.pidatagraph.engine.context.PiEngineValueKey;
 import org.pickaid.pidatagraph.engine.predicate.PiAllPredicate;
+import org.pickaid.pidatagraph.engine.predicate.PiBiomePredicate;
+import org.pickaid.pidatagraph.engine.predicate.PiBlockStatePredicate;
+import org.pickaid.pidatagraph.engine.predicate.PiEntityTypePredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiExpressionPredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiHasObjectPredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiHasNumberPredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiItemEnchantmentPredicate;
+import org.pickaid.pidatagraph.engine.predicate.PiLevelDimensionPredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiNotPredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiChancePredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiEnginePredicate;
 import org.pickaid.pidatagraph.engine.predicate.PiEnginePredicateType;
 import org.pickaid.pidatagraph.engine.predicate.PiEnginePredicates;
 import org.pickaid.pidatagraph.engine.predicate.PiNumberRangePredicate;
+import org.pickaid.pidatagraph.engine.predicate.PiObjectEqualsPredicate;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 import org.pickaid.pidatagraph.expression.PiExpressionScope;
+import org.pickaid.pidatagraph.expression.PiIntExpression;
 
 class PiEnginePredicateActionTest {
+    @Test
+    void coreActionsAndPredicatesCoverQuestScaleConditionAndRewardBreadth() {
+        List<ResourceLocation> actionIds = PiEngineActions.core().stream()
+                .map(PiEngineActionType::id)
+                .toList();
+        List<ResourceLocation> predicateIds = PiEnginePredicates.core().stream()
+                .map(PiEnginePredicateType::id)
+                .toList();
+
+        assertTrue(actionIds.size() >= 13, "core actions should cover at least reward-scale breadth");
+        assertTrue(predicateIds.size() >= 14, "core predicates should cover at least task-scale breadth");
+        assertTrue(actionIds.contains(new ResourceLocation("pidatagraph", "emit_random_number")));
+        assertTrue(actionIds.contains(new ResourceLocation("pidatagraph", "select_object")));
+        assertTrue(predicateIds.contains(new ResourceLocation("pidatagraph", "entity_type")));
+        assertTrue(predicateIds.contains(new ResourceLocation("pidatagraph", "level_dimension")));
+        assertTrue(predicateIds.contains(new ResourceLocation("pidatagraph", "biome")));
+    }
+
     @Test
     void predicateDrivenActionChainCanGateAndIterateRuntimeTargets() {
         PiEngineActionRegistry registry = PiEngineActionRegistry.builder()
@@ -164,6 +195,164 @@ class PiEnginePredicateActionTest {
         assertEquals("player-a", context.object(actor).orElseThrow());
         assertEquals("zombie", context.object(target).orElseThrow());
         assertTrue(context.hasObject(actor));
+    }
+
+    @Test
+    void corePredicatesAndContextActionsAcceptTypedJavaKeys() {
+        PiEngineNumberKey base = PiEngineNumberKey.of("base");
+        PiEngineNumberKey scaled = PiEngineNumberKey.of("scaled");
+        PiEngineNumberKey targetIndex = PiEngineNumberKey.of("targetIndex");
+        PiEngineContextKey<List> targets = PiEngineContextKey.of("targets", List.class);
+        PiEngineContextKey<String> target = PiEngineContextKey.of("target", String.class);
+        PiEngineValueKey<Number> selectedIndex = PiEngineValueKey.number("selected.index");
+
+        PiEngineAction action = new PiForEachObjectAction(
+                targets,
+                target,
+                targetIndex,
+                new PiWithNumberAction(
+                        scaled,
+                        PiDoubleExpression.of("base + targetIndex"),
+                        new PiGuardAction(
+                                new PiAllPredicate(List.of(
+                                        new PiHasNumberPredicate(scaled),
+                                        new PiHasObjectPredicate(target),
+                                        new PiNumberRangePredicate(
+                                                scaled,
+                                                java.util.Optional.of(PiDoubleExpression.of("3")),
+                                                java.util.Optional.of(PiDoubleExpression.of("3")))
+                                )),
+                                new PiEmitNumberAction(selectedIndex, PiDoubleExpression.of("scaled")))));
+
+        PiEngineFrame frame = action.execute(PiEngineContext.builder()
+                .number(base, 2)
+                .object(targets, List.of("zombie", "skeleton"))
+                .build());
+
+        assertEquals(3.0, frame.number(selectedIndex), 0.0001);
+    }
+
+    @Test
+    void genericRewardStyleActionsEncodeAndRunWithDeterministicRandomAndSelection() {
+        PiEngineContextKey<List> rewardPool = PiEngineContextKey.of("rewardPool", List.class);
+        PiEngineValueKey<Number> rolledValue = PiEngineValueKey.number("rolled.value");
+        PiEngineValueKey<Object> selectedReward = PiEngineValueKey.object("selected.reward", Object.class);
+        PiEngineAction action = new PiSequenceAction(List.of(
+                new PiNoopAction(),
+                new PiEmitRandomNumberAction(
+                        rolledValue,
+                        PiDoubleExpression.of("minReward"),
+                        PiDoubleExpression.of("maxReward")),
+                new PiSelectObjectAction(selectedReward, rewardPool, PiIntExpression.of("selectedIndex"))));
+
+        JsonElement encoded = PiEngineActionRegistry.standard().codec()
+                .encodeStart(JsonOps.INSTANCE, action)
+                .getOrThrow(false, message -> {
+                    throw new AssertionError(message);
+                });
+
+        assertEquals(JsonParser.parseString("""
+                {
+                  "type": "pidatagraph:sequence",
+                  "children": [
+                    {
+                      "type": "pidatagraph:noop"
+                    },
+                    {
+                      "type": "pidatagraph:emit_random_number",
+                      "name": "rolled.value",
+                      "min": "minReward",
+                      "max": "maxReward"
+                    },
+                    {
+                      "type": "pidatagraph:select_object",
+                      "name": "selected.reward",
+                      "list": "rewardPool",
+                      "index": "selectedIndex"
+                    }
+                  ]
+                }
+                """), encoded);
+
+        PiEngineFrame frame = action.execute(PiEngineContext.builder()
+                .number("minReward", 10)
+                .number("maxReward", 18)
+                .number("selectedIndex", 1)
+                .random(() -> 0.25)
+                .object(rewardPool, List.of("diamond", "emerald", "netherite"))
+                .build());
+
+        assertEquals(12.0, frame.number(rolledValue), 0.0001);
+        assertEquals("emerald", frame.object(selectedReward).orElseThrow());
+    }
+
+    @Test
+    void failActionCanStopInvalidDataDrivenBranchesWithAReadableMessage() {
+        IllegalStateException error = assertThrows(IllegalStateException.class, () ->
+                new PiFailAction("missing required target").execute(PiEngineContext.builder().build()));
+
+        assertEquals("engine fail action: missing required target", error.getMessage());
+    }
+
+    @Test
+    void objectEqualsPredicateSupportsTypedKeysAndIdentityMode() {
+        PiEngineContextKey<String> left = PiEngineContextKey.of("leftTarget", String.class);
+        PiEngineContextKey<String> right = PiEngineContextKey.of("rightTarget", String.class);
+        PiObjectEqualsPredicate equals = new PiObjectEqualsPredicate(left, right, false);
+        PiObjectEqualsPredicate identity = new PiObjectEqualsPredicate(left, right, true);
+        PiEngineContext context = PiEngineContext.builder()
+                .object(left, new String("zombie"))
+                .object(right, new String("zombie"))
+                .build();
+
+        assertTrue(equals.test(context));
+        assertFalse(identity.test(context));
+    }
+
+    @Test
+    void minecraftPredicatesExposeTypedConstructorsAndCodecShapes() {
+        PiEngineContextKey<net.minecraft.world.entity.Entity> entity = PiEngineContextKey.of("target", net.minecraft.world.entity.Entity.class);
+        PiEngineContextKey<net.minecraft.world.level.Level> level = PiEngineContextKey.of("level", net.minecraft.world.level.Level.class);
+        PiEngineContextKey<net.minecraft.core.BlockPos> pos = PiEngineContextKey.of("pos", net.minecraft.core.BlockPos.class);
+
+        List<PiEnginePredicate> predicates = List.of(
+                new PiEntityTypePredicate(entity, java.util.Optional.of(new ResourceLocation("minecraft", "zombie")), java.util.Optional.empty()),
+                new PiLevelDimensionPredicate(level, new ResourceLocation("minecraft", "overworld")),
+                new PiBlockStatePredicate(level, pos, java.util.Optional.of(new ResourceLocation("minecraft", "stone")), java.util.Optional.empty()),
+                new PiBiomePredicate(level, pos, java.util.Optional.of(new ResourceLocation("minecraft", "plains")), java.util.Optional.empty()));
+
+        JsonElement encoded = Codec.list(PiEnginePredicates.standardCodec())
+                .encodeStart(JsonOps.INSTANCE, predicates)
+                .getOrThrow(false, message -> {
+                    throw new AssertionError(message);
+                });
+
+        assertEquals(JsonParser.parseString("""
+                [
+                  {
+                    "type": "pidatagraph:entity_type",
+                    "entity": "target",
+                    "entity_type": "minecraft:zombie"
+                  },
+                  {
+                    "type": "pidatagraph:level_dimension",
+                    "level": "level",
+                    "dimension": "minecraft:overworld"
+                  },
+                  {
+                    "type": "pidatagraph:block_state",
+                    "level": "level",
+                    "pos": "pos",
+                    "block": "minecraft:stone"
+                  },
+                  {
+                    "type": "pidatagraph:biome",
+                    "level": "level",
+                    "pos": "pos",
+                    "biome": "minecraft:plains"
+                  }
+                ]
+                """), encoded);
     }
 
     @Test
@@ -289,6 +478,35 @@ class PiEnginePredicateActionTest {
         action.verify(PiDataBuildContext.builder()
                 .expressionScope(PiExpressionScope.of("distance", "maxDistance"))
                 .build(), "root");
+    }
+
+    @Test
+    void emitObjectActionReportsMissingSourceObjectWithType() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                new PiEmitObjectAction("selectedTarget", "target")
+                        .execute(PiEngineContext.builder().build()));
+
+        assertEquals("missing engine context object `target` of type " + Object.class.getName(), error.getMessage());
+    }
+
+    @Test
+    void forEachObjectActionReportsMissingIterableObjectWithType() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                new PiForEachObjectAction("targets", "target", "", new PiEmitObjectAction("selectedTarget", "target"))
+                        .execute(PiEngineContext.builder().build()));
+
+        assertEquals("missing engine context object `targets` of type " + Iterable.class.getName(), error.getMessage());
+    }
+
+    @Test
+    void forEachObjectActionReportsNullElementsWithListAndIndex() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                new PiForEachObjectAction("targets", "target", "targetIndex", new PiEmitObjectAction("selectedTarget", "target"))
+                        .execute(PiEngineContext.builder()
+                                .object("targets", java.util.Arrays.asList("zombie", null))
+                                .build()));
+
+        assertEquals("engine context object list `targets` contains null for `target` at index 1", error.getMessage());
     }
 
     @Test

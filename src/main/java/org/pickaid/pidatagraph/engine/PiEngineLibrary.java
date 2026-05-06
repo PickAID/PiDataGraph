@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import org.pickaid.pidatagraph.data.PiDataEntry;
 import org.pickaid.pidatagraph.data.PiDataIssue;
@@ -52,12 +53,20 @@ public final class PiEngineLibrary<T> {
         return Optional.ofNullable(entries.get(Objects.requireNonNull(id, "id")));
     }
 
+    public Optional<T> get(ResourceKey<?> key) {
+        return get(Objects.requireNonNull(key, "key").location());
+    }
+
     public T require(ResourceLocation id) {
         T value = entries.get(Objects.requireNonNull(id, "id"));
         if (value == null) {
             throw new IllegalArgumentException("missing engine content: " + id);
         }
         return value;
+    }
+
+    public T require(ResourceKey<?> key) {
+        return require(Objects.requireNonNull(key, "key").location());
     }
 
     public Map<ResourceLocation, T> entries() {
@@ -74,6 +83,10 @@ public final class PiEngineLibrary<T> {
                 throw new IllegalArgumentException("duplicate engine content: " + id);
             }
             return this;
+        }
+
+        public Builder<T> entry(ResourceKey<?> key, T value) {
+            return entry(Objects.requireNonNull(key, "key").location(), value);
         }
 
         public PiEngineLibrary<T> build() {

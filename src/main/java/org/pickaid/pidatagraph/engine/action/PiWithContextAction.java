@@ -8,7 +8,9 @@ import java.util.Objects;
 import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.engine.PiEngineContext;
 import org.pickaid.pidatagraph.engine.PiEngineFrame;
+import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 
 public final class PiWithContextAction implements PiEngineAction {
@@ -25,6 +27,10 @@ public final class PiWithContextAction implements PiEngineAction {
         this.numbers = checkNumbers(numbers);
         this.objects = checkObjects(objects);
         this.child = Objects.requireNonNull(child, "child");
+    }
+
+    public static Builder builder(PiEngineAction child) {
+        return new Builder(child);
     }
 
     static Codec<PiWithContextAction> codec(Codec<PiEngineAction> actionCodec) {
@@ -59,9 +65,7 @@ public final class PiWithContextAction implements PiEngineAction {
             builder.number(entry.getKey(), context.evaluate(entry.getValue()));
         }
         for (Map.Entry<String, String> entry : objects.entrySet()) {
-            Object value = context.object(entry.getValue()).orElseThrow(() -> new IllegalArgumentException(
-                    "missing engine context object: " + entry.getValue()
-            ));
+            Object value = context.requireObject(entry.getValue(), Object.class);
             builder.object(entry.getKey(), value);
         }
         return builder.build().execute(child);
@@ -120,5 +124,42 @@ public final class PiWithContextAction implements PiEngineAction {
                 )
         );
         return Map.copyOf(checked);
+    }
+
+    public static final class Builder {
+        private final PiEngineAction child;
+        private final LinkedHashMap<String, PiDoubleExpression> numbers = new LinkedHashMap<>();
+        private final LinkedHashMap<String, String> objects = new LinkedHashMap<>();
+
+        private Builder(PiEngineAction child) {
+            this.child = Objects.requireNonNull(child, "child");
+        }
+
+        public Builder number(String name, PiDoubleExpression value) {
+            numbers.put(PiEngineActions.checkVariableName(Objects.requireNonNull(name, "name")),
+                    Objects.requireNonNull(value, "value"));
+            return this;
+        }
+
+        public Builder number(PiEngineNumberKey name, PiDoubleExpression value) {
+            return number(Objects.requireNonNull(name, "name").name(), value);
+        }
+
+        public Builder object(String name, String source) {
+            objects.put(
+                    PiEngineActions.checkVariableName(Objects.requireNonNull(name, "name")),
+                    PiEngineActions.checkVariableName(Objects.requireNonNull(source, "source")));
+            return this;
+        }
+
+        public Builder object(PiEngineContextKey<?> name, PiEngineContextKey<?> source) {
+            return object(
+                    Objects.requireNonNull(name, "name").name(),
+                    Objects.requireNonNull(source, "source").name());
+        }
+
+        public PiWithContextAction build() {
+            return new PiWithContextAction(numbers, objects, child);
+        }
     }
 }

@@ -7,6 +7,7 @@ import org.pickaid.pidatagraph.data.PiDataBuildContext;
 import org.pickaid.pidatagraph.engine.PiEngineContext;
 import org.pickaid.pidatagraph.engine.PiEngineFrame;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 
 public final class PiWithNumberAction implements PiEngineAction {
@@ -18,6 +19,10 @@ public final class PiWithNumberAction implements PiEngineAction {
         this.name = PiEngineActions.checkVariableName(Objects.requireNonNull(name, "name"));
         this.value = Objects.requireNonNull(value, "value");
         this.child = Objects.requireNonNull(child, "child");
+    }
+
+    public PiWithNumberAction(PiEngineNumberKey name, PiDoubleExpression value, PiEngineAction child) {
+        this(Objects.requireNonNull(name, "name").name(), value, child);
     }
 
     static Codec<PiWithNumberAction> codec(Codec<PiEngineAction> actionCodec) {

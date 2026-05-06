@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.Objects;
 import org.pickaid.pidatagraph.engine.PiEngineContext;
 import org.pickaid.pidatagraph.engine.action.PiEngineActions;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
 
 public final class PiHasNumberPredicate implements PiEnginePredicate {
     static final Codec<PiHasNumberPredicate> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -15,6 +16,10 @@ public final class PiHasNumberPredicate implements PiEnginePredicate {
 
     public PiHasNumberPredicate(String key) {
         this.key = PiEngineActions.checkVariableName(Objects.requireNonNull(key, "key"));
+    }
+
+    public PiHasNumberPredicate(PiEngineNumberKey key) {
+        this(Objects.requireNonNull(key, "key").name());
     }
 
     public String key() {

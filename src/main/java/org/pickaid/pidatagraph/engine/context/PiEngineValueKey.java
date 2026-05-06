@@ -17,6 +17,10 @@ public record PiEngineValueKey<T>(String name, Class<T> type) {
     public PiEngineValueKey {
         name = PiEngineKeyNames.frameValue(name);
         type = Objects.requireNonNull(type, "type");
+        if (type.isPrimitive()) {
+            throw new IllegalArgumentException("engine frame value key `" + name
+                    + "` type must not be primitive: " + type.getName());
+        }
     }
 
     public static PiEngineValueKey<Number> number(String name) {

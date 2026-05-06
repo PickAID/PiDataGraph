@@ -2,6 +2,7 @@ package org.pickaid.pidatagraph.sync;
 
 import java.util.Objects;
 import java.util.function.Consumer;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import org.pickaid.pinet.api.sync.PiSyncConsumer;
 import org.pickaid.pinet.api.sync.PiSyncMatcher;
@@ -45,6 +46,10 @@ public final class PiDataGraphSync {
         runtime.register(matcher(graphId), consumer(consumer));
     }
 
+    public static void receive(PiSyncRuntime runtime, ResourceKey<?> graphId, Consumer<PiDataGraphState> consumer) {
+        receive(runtime, Objects.requireNonNull(graphId, "graphId").location(), consumer);
+    }
+
     public static PiSyncMatcher matcher(ResourceLocation graphId) {
         PiSyncTarget target = target(graphId);
         return PiSyncMatcher.schema(SCHEMA_ID)
@@ -52,8 +57,16 @@ public final class PiDataGraphSync {
                 .and(envelope -> envelope.target().key().equals(target.key()));
     }
 
+    public static PiSyncMatcher matcher(ResourceKey<?> graphId) {
+        return matcher(Objects.requireNonNull(graphId, "graphId").location());
+    }
+
     public static PiSyncTarget target(ResourceLocation graphId) {
         return PiSyncTarget.of(TARGET_KIND, Objects.requireNonNull(graphId, "graphId").toString());
+    }
+
+    public static PiSyncTarget target(ResourceKey<?> graphId) {
+        return target(Objects.requireNonNull(graphId, "graphId").location());
     }
 
     public static PiSyncConsumer consumer(Consumer<PiDataGraphState> consumer) {

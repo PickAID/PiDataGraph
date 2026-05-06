@@ -2,6 +2,7 @@ package org.pickaid.pidatagraph.sync;
 
 import java.util.Objects;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import org.pickaid.piserializekit.api.schema.PiField;
 import org.pickaid.piserializekit.api.schema.PiSyncModel;
@@ -28,5 +29,9 @@ public final class PiDataGraphState {
         }
         this.revision = revision;
         this.payload = Objects.requireNonNull(payload, "payload").copy();
+    }
+
+    public PiDataGraphState(ResourceKey<?> graphId, long revision, CompoundTag payload) {
+        this(Objects.requireNonNull(graphId, "graphId").location(), revision, payload);
     }
 }

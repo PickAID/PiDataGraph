@@ -1,6 +1,7 @@
 package org.pickaid.pidatagraph.engine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Map;
@@ -11,9 +12,13 @@ import org.pickaid.pidatagraph.data.PiDataVerificationException;
 import org.pickaid.pidatagraph.engine.action.PiEngineAction;
 import org.pickaid.pidatagraph.engine.action.PiEngineActionType;
 import org.pickaid.pidatagraph.engine.action.PiEngineActions;
+import org.pickaid.pidatagraph.engine.action.PiForEachObjectAction;
 import org.pickaid.pidatagraph.engine.action.PiWithContextAction;
 import org.pickaid.pidatagraph.engine.action.PiWithNumberAction;
+import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
+import org.pickaid.pidatagraph.engine.context.PiEngineValueKey;
 import org.pickaid.pidatagraph.expression.PiDoubleExpression;
 import org.pickaid.pidatagraph.expression.PiExpressionScope;
 
@@ -115,6 +120,20 @@ class PiEngineContextContractTest {
     }
 
     @Test
+    void forEachObjectValidationUsesTheChildRequiredTypeForTheLoopItem() {
+        PiEngineAction action = new PiForEachObjectAction(
+                "targets",
+                "target",
+                "",
+                new TypedTargetAction()
+        );
+
+        action.verify(PiDataBuildContext.builder()
+                .object("targets", Iterable.class)
+                .build(), "root");
+    }
+
+    @Test
     void engineBuildContextCanAbsorbAnActionContractForLoadTimeChecks() {
         PiEngineAction action = new DamageProbeAction(PiDoubleExpression.of("finalDamage"));
 
@@ -128,6 +147,101 @@ class PiEngineContextContractTest {
                 "target", Target.class,
                 "damageSource", DamageSourceToken.class
         ), context.objectTypes());
+    }
+
+    @Test
+    void engineBuildContextAcceptsTypedKeysForGeneratedGlueValidation() {
+        PiEngineNumberKey baseDamage = PiEngineNumberKey.of("baseDamage");
+        PiEngineContextKey<Target> target = PiEngineContextKey.of("target", Target.class);
+
+        PiEngineBuildContext context = PiEngineBuildContext.standard()
+                .withNumber(baseDamage)
+                .withObject(target);
+
+        assertEquals(PiExpressionScope.of("baseDamage").variables(), context.expressionScope().variables());
+        assertEquals(Map.of("target", Target.class), context.objectTypes());
+    }
+
+    @Test
+    void dataBuildContextAcceptsTypedKeysForGeneratedGlueValidation() {
+        PiEngineNumberKey baseDamage = PiEngineNumberKey.of("baseDamage");
+        PiEngineContextKey<Target> target = PiEngineContextKey.of("target", Target.class);
+
+        PiDataBuildContext context = PiDataBuildContext.builder()
+                .number(baseDamage)
+                .object(target)
+                .build();
+        PiDataBuildContext derived = PiDataBuildContext.builder().build()
+                .withVariable(baseDamage)
+                .withObject(target);
+
+        assertEquals(PiExpressionScope.of("baseDamage").variables(), context.expressionScope().variables());
+        assertEquals(Map.of("target", Target.class), context.objectTypes());
+        assertEquals(PiExpressionScope.of("baseDamage").variables(), derived.expressionScope().variables());
+        assertEquals(Map.of("target", Target.class), derived.objectTypes());
+    }
+
+    @Test
+    void dataBuildContextCanQueryTypedKeysFromGeneratedGlueValidation() {
+        PiEngineNumberKey baseDamage = PiEngineNumberKey.of("baseDamage");
+        PiEngineContextKey<Target> target = PiEngineContextKey.of("target", Target.class);
+
+        PiDataBuildContext context = PiDataBuildContext.builder()
+                .number(baseDamage)
+                .object(target)
+                .build();
+
+        assertEquals(true, context.hasVariable(baseDamage));
+        assertEquals(true, context.hasObject(target));
+        assertEquals(Target.class, context.objectType(target).orElseThrow());
+    }
+
+    @Test
+    void contextContractCanQueryAndRemoveTypedObjectKeys() {
+        PiEngineContextKey<Target> target = PiEngineContextKey.of("target", Target.class);
+
+        PiEngineContextContract contract = PiEngineContextContract.builder()
+                .object(target)
+                .build();
+
+        assertEquals(Target.class, contract.objectType(target).orElseThrow());
+        assertEquals(PiEngineContextContract.empty(), contract.withoutObject(target));
+    }
+
+    @Test
+    void objectContractsAndKeysRejectPrimitiveTypes() {
+        IllegalArgumentException contextKeyError = assertThrows(IllegalArgumentException.class, () ->
+                PiEngineContextKey.of("count", int.class));
+        assertEquals("engine context object key `count` type must not be primitive: int", contextKeyError.getMessage());
+
+        IllegalArgumentException valueKeyError = assertThrows(IllegalArgumentException.class, () ->
+                PiEngineValueKey.object("count", int.class));
+        assertEquals("engine frame value key `count` type must not be primitive: int", valueKeyError.getMessage());
+
+        IllegalArgumentException contractError = assertThrows(IllegalArgumentException.class, () ->
+                PiEngineContextContract.builder().object("count", int.class));
+        assertEquals("engine context object `count` type must not be primitive: int", contractError.getMessage());
+
+        IllegalArgumentException engineBuildError = assertThrows(IllegalArgumentException.class, () ->
+                PiEngineBuildContext.standard().withObject("count", int.class));
+        assertEquals("engine build context object `count` type must not be primitive: int", engineBuildError.getMessage());
+
+        IllegalArgumentException dataBuildError = assertThrows(IllegalArgumentException.class, () ->
+                PiDataBuildContext.builder().object("count", int.class));
+        assertEquals("data build context object `count` type must not be primitive: int", dataBuildError.getMessage());
+    }
+
+    @Test
+    void contextExecuteChecksActionContractBeforeCallingActionLogic() {
+        ContractOnlyAction action = new ContractOnlyAction();
+
+        PiEngineContractViolation error = assertThrows(PiEngineContractViolation.class, () ->
+                PiEngineContext.builder().build().execute(action));
+
+        assertFalse(action.executed);
+        assertEquals("engine context contract failed for action example:contract_only: missing object `target` of type "
+                + Target.class.getName()
+                + "; available objects: []; available numbers: []", error.getMessage());
     }
 
     private static ResourceLocation id(String path) {
@@ -184,6 +298,52 @@ class PiEngineContextContractTest {
         @Override
         public PiEngineContextContract contextContract() {
             return PiEngineContextContract.builder().number(number).build();
+        }
+    }
+
+    private record TypedTargetAction() implements PiEngineAction {
+        private static final PiEngineActionType<TypedTargetAction> TYPE = PiEngineActionType.of(
+                id("typed_target"),
+                ignored -> com.mojang.serialization.Codec.unit(new TypedTargetAction())
+        );
+
+        @Override
+        public PiEngineActionType<?> type() {
+            return TYPE;
+        }
+
+        @Override
+        public PiEngineFrame execute(PiEngineContext context) {
+            return PiEngineFrame.empty();
+        }
+
+        @Override
+        public PiEngineContextContract contextContract() {
+            return PiEngineContextContract.builder().object("target", Target.class).build();
+        }
+    }
+
+    private static final class ContractOnlyAction implements PiEngineAction {
+        private static final PiEngineActionType<ContractOnlyAction> TYPE = PiEngineActionType.of(
+                id("contract_only"),
+                ignored -> com.mojang.serialization.Codec.unit(new ContractOnlyAction())
+        );
+        private boolean executed;
+
+        @Override
+        public PiEngineActionType<?> type() {
+            return TYPE;
+        }
+
+        @Override
+        public PiEngineFrame execute(PiEngineContext context) {
+            executed = true;
+            return PiEngineFrame.empty();
+        }
+
+        @Override
+        public PiEngineContextContract contextContract() {
+            return PiEngineContextContract.builder().object("target", Target.class).build();
         }
     }
 
