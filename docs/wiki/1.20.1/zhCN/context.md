@@ -1,6 +1,8 @@
 # 执行上下文
 
-`PiEngineContext` 是一次执行的输入。number 进入表达式变量表，object 交给 Java action 或 predicate 使用。
+`PiGraphContext` 是一次图执行的 public 输入。number 进入表达式变量表，object 交给 Java action 或 predicate 使用。
+
+`PiEngineContext` 仍作为兼容 alias 和当前 action executor 内部入口保留。新的应用层 binder 应使用 `PiGraphContext`。
 
 ## Java 常量 key
 
@@ -13,7 +15,7 @@ public static final PiEngineValueKey<Number> HUD_MANA_FILL =
 ```
 
 ```java
-PiEngineContext context = PiEngineContext.builder()
+PiGraphContext context = PiGraphContext.builder()
         .number(BASE_DAMAGE, 6)
         .object(TARGET, target)
         .build();
@@ -47,21 +49,19 @@ double manaFill = frame.numberOr(HUD_MANA_FILL, 0);
 
 ## Minecraft 绑定 helper
 
-`PiEngineContextBindings` 会同时写入 object 和常用 number。
+typed Java 输入优先使用 `PiGraphContextBindings.record(...)` 或自定义 `PiGraphContextBinder`。
 
 ```java
-PiEngineContext context = PiEngineContextBindings.itemStack(
-        PiEngineContextBindings.living(
-                PiEngineContext.builder(),
-                "target",
-                target),
-        "weapon",
-        player.getMainHandItem())
-        .number("baseDamage", 6)
-        .build();
+public record SpellCastInput(Object caster, LivingEntity target, double baseDamage) {
+}
+
+PiGraphContextBinder<SpellCastInput> binder =
+        PiGraphContextBindings.record("spell_cast", SpellCastInput.class);
+
+PiGraphContext context = binder.bind(new SpellCastInput(caster, target, 6));
 ```
 
-已支持的绑定：
+旧的 `PiEngineContextBindings` 仍可用于 Minecraft-specific helper 值：
 
 | 方法 | 写入内容 |
 | --- | --- |
@@ -77,10 +77,18 @@ PiEngineContext context = PiEngineContextBindings.itemStack(
 
 ## Contract
 
-Java action 和 binder 用 `PiEngineContextContract` 声明输入。
+Java action 和旧 binder 用 `PiEngineContextContract` 声明输入。新的 graph binder 用 `PiGraphContextSchema` 声明同一类输入形状。
 
 ```java
 return PiEngineContextContract.builder()
+        .number("baseDamage")
+        .object("target", LivingEntity.class)
+        .object("damageSource", DamageSource.class)
+        .build();
+```
+
+```java
+return PiGraphContextSchema.builder("spell_cast")
         .number("baseDamage")
         .object("target", LivingEntity.class)
         .object("damageSource", DamageSource.class)

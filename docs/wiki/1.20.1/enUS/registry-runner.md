@@ -26,12 +26,12 @@ public static void newDataPackRegistries(DataPackRegistryEvent.NewRegistry event
 public record HitInput(double base, double power, LivingEntity target, DamageSource source) {
 }
 
-public enum HitBinder implements PiEngineContextBinder<HitInput> {
+public enum HitBinder implements PiGraphContextBinder<HitInput> {
     INSTANCE;
 
     @Override
-    public PiEngineContextContract contract() {
-        return PiEngineContextContract.builder()
+    public PiGraphContextSchema schema() {
+        return PiGraphContextSchema.builder("hit")
                 .number("base")
                 .number("power")
                 .object("target", LivingEntity.class)
@@ -40,8 +40,8 @@ public enum HitBinder implements PiEngineContextBinder<HitInput> {
     }
 
     @Override
-    public PiEngineContext bind(HitInput input) {
-        return PiEngineContext.builder()
+    public PiGraphContext bind(HitInput input) {
+        return PiGraphContext.builder()
                 .number("base", input.base())
                 .number("power", input.power())
                 .object("target", input.target())

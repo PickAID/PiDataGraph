@@ -4,8 +4,8 @@ template_version = "1.20.1-template-1.0.0"
 [mod]
 mod_id = "pidatagraph"
 mod_name = "PiDataGraph"
-version = "0.0.5"
-version_suffix = "dev"
+version = "0.0.6"
+version_suffix = ""
 group = "com.mihono.pickaid"
 authors = ["PickAID Team"]
 license = "MIT"
@@ -41,16 +41,16 @@ mihono = "https://maven.mihono.cn/repository/pickaid1201/"
 [dependencies]
 [dependencies.implementation]
 exp4j = { notation = "net.objecthunter:exp4j:0.4.8", transitive = false }
-piserializekit = { notation = "com.mihono.pickaid:piserializekit:0.0.7", transitive = false }
-pinet = { notation = "com.mihono.pickaid:pinet:0.0.5", transitive = false }
+piserializekit = { notation = "com.mihono.pickaid:piserializekit:0.0.8", transitive = false }
+pinet = { notation = "com.mihono.pickaid:pinet:0.0.6", transitive = false }
 
 [dependencies.jarjar]
 exp4j = { notation = "net.objecthunter:exp4j:0.4.8", range = "[0.4.8,0.5)", transitive = false }
-piserializekit = { notation = "com.mihono.pickaid:piserializekit:0.0.7", range = "[0.0.7,0.1.0)", transitive = false }
-pinet = { notation = "com.mihono.pickaid:pinet:0.0.5", range = "[0.0.5,0.1.0)", transitive = false }
+piserializekit = { notation = "com.mihono.pickaid:piserializekit:0.0.8", range = "[0.0.8,0.1.0)", transitive = false }
+pinet = { notation = "com.mihono.pickaid:pinet:0.0.6", range = "[0.0.6,0.1.0)", transitive = false }
 
 [dependencies.annotation_processor]
-piserializekit_processor = { notation = "com.mihono.pickaid:piserializekit:0.0.7", transitive = false }
+piserializekit_processor = { notation = "com.mihono.pickaid:piserializekit:0.0.8", transitive = false }
 
 [publish]
 # Leave tokens out of git. Prefer environment variables for real releases.

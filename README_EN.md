@@ -9,13 +9,14 @@ It currently supports:
 - Expressions: `PiDoubleExpression`, `PiIntExpression`, `PiBooleanExpression`
 - Data files: `PiDataDefinition`, `PiDataSet`, `PiDataReloadListener`, `PiDataProvider`
 - Action chains: `PiEngineAction`, `PiEnginePredicate`, `PiEngineActionRegistry`
-- Runtime input and output: `PiEngineContext`, `PiEngineContextBinder`, `PiEngineFrame`
+- Runtime input and output: `PiGraphContext`, `PiGraphContextBinder`, `PiEngineFrame`
+- Structured graph results: `PiGraphResult`, `PiActionResult`, `PiDebugFrame`
 - Java-side formula sets: `PiEngineFormulaSet`, `PiCompiledFormulaSet`
 - Minecraft datapack registries: `PiDataPackRegistries.action(...)`, `PiEngineRunner`
 - Basic directed graph execution: `PiGraphDefinition`, `PiGraphExecutor`
 - Sync bridge: `PiDataGraphState`, `PiDataGraphSync`
 
-Current version: `com.mihono.pickaid:pidatagraph:0.0.5-dev`
+Current version: `com.mihono.pickaid:pidatagraph:0.0.6`
 
 ## Docs
 
@@ -28,8 +29,8 @@ With the PickAID Maven, downstream mods usually declare both `implementation` an
 
 ```toml
 [dependencies.implementation]
-pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.5-dev", transitive = false }
+pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.6", transitive = false }
 
 [dependencies.jarjar]
-pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.5-dev", range = "[0.0.5,0.1.0)", transitive = false }
+pidatagraph = { notation = "com.mihono.pickaid:pidatagraph:0.0.6", range = "[0.0.6,0.1.0)", transitive = false }
 ```

@@ -22,7 +22,16 @@ import org.pickaid.pidatagraph.engine.context.PiEngineContextKey;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
 import org.pickaid.pidatagraph.engine.context.PiEngineKeyNames;
 import org.pickaid.pidatagraph.engine.context.PiEngineNumberKey;
+import org.pickaid.pidatagraph.graphcontext.PiGraphContext;
 
+/**
+ * Compatibility context name retained for the existing action runtime.
+ *
+ * <p>New graph-facing application APIs should use {@link PiGraphContext}. This
+ * type remains because the current P0 action executor and older integrations
+ * still run on the original context kernel.</p>
+ */
+@Deprecated(forRemoval = false)
 public final class PiEngineContext {
     private final PiExpressionLanguage language;
     private final PiExpressionContext expressions;

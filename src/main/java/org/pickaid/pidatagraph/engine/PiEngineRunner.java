@@ -15,6 +15,7 @@ import org.pickaid.pidatagraph.data.PiDataVerificationException;
 import org.pickaid.pidatagraph.engine.action.PiEngineAction;
 import org.pickaid.pidatagraph.engine.action.PiEngineActionType;
 import org.pickaid.pidatagraph.engine.context.PiEngineContextContract;
+import org.pickaid.pidatagraph.graphcontext.PiGraphContextBinder;
 
 public final class PiEngineRunner<T> {
     private final ResourceKey<Registry<PiEngineAction>> registryKey;
@@ -29,11 +30,22 @@ public final class PiEngineRunner<T> {
         return new PiEngineRunner<>(null, binder);
     }
 
+    public static <T> PiEngineRunner<T> actionRegistry(PiGraphContextBinder<T> binder) {
+        return new PiEngineRunner<>(null, adapt(binder));
+    }
+
     public static <T> PiEngineRunner<T> actionRegistry(
             ResourceKey<Registry<PiEngineAction>> registryKey,
             PiEngineContextBinder<T> binder
     ) {
         return new PiEngineRunner<>(Objects.requireNonNull(registryKey, "registryKey"), binder);
+    }
+
+    public static <T> PiEngineRunner<T> actionRegistry(
+            ResourceKey<Registry<PiEngineAction>> registryKey,
+            PiGraphContextBinder<T> binder
+    ) {
+        return new PiEngineRunner<>(Objects.requireNonNull(registryKey, "registryKey"), adapt(binder));
     }
 
     public PiEngineContextBinder<T> binder() {
@@ -113,6 +125,21 @@ public final class PiEngineRunner<T> {
 
     private PiEngineContextContract binderContract() {
         return Objects.requireNonNull(binder.contract(), "binder returned null contract");
+    }
+
+    private static <T> PiEngineContextBinder<T> adapt(PiGraphContextBinder<T> binder) {
+        Objects.requireNonNull(binder, "binder");
+        return new PiEngineContextBinder<>() {
+            @Override
+            public PiEngineContextContract contract() {
+                return Objects.requireNonNull(binder.schema(), "binder returned null schema").toEngineContract();
+            }
+
+            @Override
+            public PiEngineContext bind(T input) {
+                return Objects.requireNonNull(binder.bind(input), "binder returned null context").asEngineContext();
+            }
+        };
     }
 
     private static PiEngineActionType<?> actionType(PiEngineAction action) {

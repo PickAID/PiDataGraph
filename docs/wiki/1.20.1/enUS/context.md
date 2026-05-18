@@ -1,6 +1,8 @@
 # Runtime Context
 
-`PiEngineContext` is the input for one execution. Numbers become expression variables. Objects are read by Java actions or predicates.
+`PiGraphContext` is the public input for one graph execution. Numbers become expression variables. Objects are read by Java actions or predicates.
+
+`PiEngineContext` remains as a compatibility alias for older integrations and the current action executor internals. New application-facing binders should use `PiGraphContext`.
 
 ## Java Key Constants
 
@@ -13,7 +15,7 @@ public static final PiEngineValueKey<Number> HUD_MANA_FILL =
 ```
 
 ```java
-PiEngineContext context = PiEngineContext.builder()
+PiGraphContext context = PiGraphContext.builder()
         .number(BASE_DAMAGE, 6)
         .object(TARGET, target)
         .build();
@@ -47,21 +49,19 @@ double manaFill = frame.numberOr(HUD_MANA_FILL, 0);
 
 ## Minecraft Binding Helpers
 
-`PiEngineContextBindings` writes both objects and common numbers.
+For typed Java inputs, prefer `PiGraphContextBindings.record(...)` or a custom `PiGraphContextBinder`.
 
 ```java
-PiEngineContext context = PiEngineContextBindings.itemStack(
-        PiEngineContextBindings.living(
-                PiEngineContext.builder(),
-                "target",
-                target),
-        "weapon",
-        player.getMainHandItem())
-        .number("baseDamage", 6)
-        .build();
+public record SpellCastInput(Object caster, LivingEntity target, double baseDamage) {
+}
+
+PiGraphContextBinder<SpellCastInput> binder =
+        PiGraphContextBindings.record("spell_cast", SpellCastInput.class);
+
+PiGraphContext context = binder.bind(new SpellCastInput(caster, target, 6));
 ```
 
-Supported bindings:
+Legacy `PiEngineContextBindings` is still available for Minecraft-specific helper values:
 
 | Method | Writes |
 | --- | --- |
@@ -77,10 +77,18 @@ Supported bindings:
 
 ## Contract
 
-Java actions and binders declare inputs with `PiEngineContextContract`.
+Java actions and legacy binders declare inputs with `PiEngineContextContract`. New graph binders declare the same shape with `PiGraphContextSchema`.
 
 ```java
 return PiEngineContextContract.builder()
+        .number("baseDamage")
+        .object("target", LivingEntity.class)
+        .object("damageSource", DamageSource.class)
+        .build();
+```
+
+```java
+return PiGraphContextSchema.builder("spell_cast")
         .number("baseDamage")
         .object("target", LivingEntity.class)
         .object("damageSource", DamageSource.class)
