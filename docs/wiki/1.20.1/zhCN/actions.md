@@ -107,18 +107,18 @@ public record DamageAction(PiDoubleExpression amount) implements PiEngineAction 
 
     @Override
     public PiEngineFrame execute(PiEngineContext context) {
-        LivingEntity target = context.object("target", LivingEntity.class).orElseThrow();
-        DamageSource source = context.object("damageSource", DamageSource.class).orElseThrow();
-        target.hurt(source, (float) context.evaluate(amount));
-        return PiEngineFrame.empty();
+        PiActionResult request = PiActionResult.request(
+                new ResourceLocation("pidamage", "damage_request"),
+                "impact_damage");
+        return PiEngineFrame.builder()
+                .number("impact_damage.amount", context.evaluate(amount))
+                .object("impact_damage.result", request)
+                .build();
     }
 
     @Override
     public PiEngineContextContract contextContract() {
-        return PiEngineContextContract.builder()
-                .object("target", LivingEntity.class)
-                .object("damageSource", DamageSource.class)
-                .build();
+        return PiEngineContextContract.empty();
     }
 
     @Override
@@ -128,6 +128,10 @@ public record DamageAction(PiDoubleExpression amount) implements PiEngineAction 
     }
 }
 ```
+
+PiDataGraph action 只描述结构化请求。真正拥有运行时状态的模块，比如
+PiEngine 加 PiDamage，会重新解析 target/source 状态并执行请求；graph action
+不应该直接修改世界。
 
 注册 action registry：
 
