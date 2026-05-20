@@ -18,6 +18,23 @@ final class PiGraphResultTest {
     }
 
     @Test
+    void p0RuntimeHelpersReturnOwnerModuleRequestsWithoutApplyingThem() {
+        PiActionResult capture = PiGraphResults.captureRequest("capture.target");
+        PiActionResult throwTarget = PiGraphResults.throwRequest("capture.throw");
+        PiActionResult damage = PiGraphResults.damageRequest("impact_damage");
+        PiPresentationResult cue = PiGraphResults.cue("beam");
+
+        assertEquals(id("piengine:capture"), capture.type());
+        assertEquals("capture.target", capture.payloadKey());
+        assertEquals(id("piengine:throw"), throwTarget.type());
+        assertEquals("capture.throw", throwTarget.payloadKey());
+        assertEquals(id("pidamage:damage_request"), damage.type());
+        assertEquals("impact_damage", damage.payloadKey());
+        assertEquals(id("pirender:cue"), cue.type());
+        assertEquals("beam", cue.payloadKey());
+    }
+
+    @Test
     void debugFrameCarriesStructuredResultsWithoutApplyingThem() {
         PiActionResult damage = PiActionResult.request(id("pidamage:damage_request"), "impact_damage");
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.7
+
+- Added P0 graph result helpers for capture, throw, damage request, and presentation cue owner-module requests.
+
 ## 0.0.6
 
 - Added PiGraphContext public schema, binder, key, and builder contracts.
